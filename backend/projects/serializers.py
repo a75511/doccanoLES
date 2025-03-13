@@ -14,6 +14,8 @@ from .models import (
     Speech2textProject,
     Tag,
     TextClassificationProject,
+    Perspective,
+    PerspectiveAttribute,
 )
 
 
@@ -46,10 +48,30 @@ class TagSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "project")
 
+class PerspectiveAttributeSerializer(serializers.ModelSerializer):
+    perspective_name = serializers.CharField(source="perspective.name", read_only=True)
+
+    class Meta:
+        model = PerspectiveAttribute
+        fields = ["id", "perspective_name", "name", "description"]
+
+class PerspectiveSerializer(serializers.ModelSerializer):
+    attributes = PerspectiveAttributeSerializer(many=True, read_only=True)
+    projects = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Perspective
+        fields = ["id", "name", "description", "attributes", "projects"]
+
+    def get_projects(self, instance):
+        # Return a list of project IDs that use this perspective
+        return [project.id for project in instance.projects.all()]
+
 
 class ProjectSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, required=False)
     author = serializers.SerializerMethodField()
+    perspective = PerspectiveSerializer(read_only=True)
 
     @classmethod
     def get_author(cls, instance):
@@ -74,6 +96,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "allow_member_to_create_label_type",
             "is_text_project",
             "tags",
+            "perspective",
         ]
         read_only_fields = (
             "created_at",

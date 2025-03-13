@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.db.models import Manager
 from polymorphic.models import PolymorphicModel
 
@@ -22,6 +23,23 @@ class ProjectType(models.TextChoices):
     BOUNDING_BOX = "BoundingBox"
     SEGMENTATION = "Segmentation"
     IMAGE_CAPTIONING = "ImageCaptioning"
+
+class Perspective(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True, null=True, help_text="Descrição geral da perspectiva.")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return self.name
+
+
+class PerspectiveAttribute(models.Model):
+    name = models.CharField(max_length=255, help_text="Nome do atributo (ex.: idade, sexo, localização).")
+    perspectives = models.ManyToManyField(Perspective, related_name='attributes')
+    description = models.TextField(blank=True, null=True, help_text="O anotador preencherá este campo durante a anotação.")
+
+    def __str__(self):
+        return f"{self.name} ({', '.join([p.name for p in self.perspectives.all()])})"
 
 
 class Project(PolymorphicModel):
@@ -40,6 +58,13 @@ class Project(PolymorphicModel):
     collaborative_annotation = models.BooleanField(default=False)
     single_class_classification = models.BooleanField(default=False)
     allow_member_to_create_label_type = models.BooleanField(default=False)
+    perspective = models.ForeignKey(
+        Perspective,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="projects"
+    )
 
     def add_admin(self):
         admin_role = Role.objects.get(name=settings.ROLE_PROJECT_ADMIN)
