@@ -11,6 +11,8 @@ from .models import (
     SequenceLabelingProject,
     Tag,
     TextClassificationProject,
+    Perspective,
+    PerspectiveAttribute,
 )
 
 
@@ -41,6 +43,18 @@ class TagAdmin(admin.ModelAdmin):
     )
     search_fields = ("text",)
 
+class PerspectiveAdmin(admin.ModelAdmin):
+    list_display = ("name", "description")
+    search_fields = ("name",)
+
+
+class PerspectiveAttributeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'get_perspective')
+
+    def get_perspective(self, obj):
+        return ', '.join([p.name for p in obj.perspectives.all()]) if obj.perspectives.exists() else "No Perspectives yet"
+    get_perspective.short_description = 'Perspectives'
+
 
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Project, ProjectAdmin)
@@ -52,3 +66,5 @@ admin.site.register(SegmentationProject, ProjectAdmin)
 admin.site.register(ImageCaptioningProject, ProjectAdmin)
 admin.site.register(ImageClassificationProject, ProjectAdmin)
 admin.site.register(Tag, TagAdmin)
+admin.site.register(Perspective, PerspectiveAdmin)
+admin.site.register(PerspectiveAttribute, PerspectiveAttributeAdmin)
