@@ -44,7 +44,7 @@
 </template>
 
 <script lang="ts">
-import { mdiMagnify, mdiPencil } from '@mdi/js'
+import { mdiMagnify } from '@mdi/js'
 import type { PropType } from 'vue'
 import Vue from 'vue'
 import { DataOptions } from 'vuetify/types'
