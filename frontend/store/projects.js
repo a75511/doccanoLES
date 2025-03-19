@@ -1,5 +1,9 @@
 export const state = () => ({
-  current: {}
+  current: {
+    id: '',
+    name: '',
+    perspective: null,
+  }
 })
 
 export const getters = {
@@ -15,6 +19,11 @@ export const getters = {
 export const mutations = {
   setCurrent(state, payload) {
     state.current = payload
+  },
+  updateCurrentProjectPerspective(state, perspective) {
+    if (state.current) {
+      state.current.perspective = perspective;
+    }
   }
 }
 
