@@ -29,6 +29,7 @@ class PerspectiveListView(generics.ListAPIView):
         context['project_id'] = self.kwargs.get('project_id')
         return context
 
+        return Response(serialized_perspectives.data)
 
 
 class AssignPerspectiveToProject(APIView):
