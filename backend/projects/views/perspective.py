@@ -46,3 +46,4 @@ class AssignPerspectiveToProject(APIView):
             "message": "Perspective assigned successfully.",
             "project": serializer.data
         }, status=status.HTTP_200_OK)
+

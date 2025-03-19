@@ -43,7 +43,8 @@ function toModel(item: { [key: string]: any }): Project {
     item.created_at,
     item.updated_at,
     item.author,
-    item.is_text_project
+    item.is_text_project,
+    item.perspective
   )
 }
 
