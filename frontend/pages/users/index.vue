@@ -1,5 +1,15 @@
 <template>
     <v-card>
+      <v-card-title>
+      <v-btn
+        v-if="isAdmin"
+        class="text-capitalize"
+        color="primary"
+        @click="$router.push('/users/create')"
+      >
+        Create
+      </v-btn>
+    </v-card-title>
   
         <!-- Data Table with Search Bar -->
         <v-data-table
@@ -47,6 +57,7 @@
   
   <script lang="ts">
   import Vue from 'vue';
+  import { mapGetters } from 'vuex';
   import { mdiMagnify } from '@mdi/js';
   import { APIUserRepository } from '@/repositories/user/apiUserRepository';
   import { UserItem } from '@/domain/models/user/user';
@@ -66,6 +77,7 @@
     },
   
     computed: {
+      ...mapGetters('auth', ['isAdmin']),
       headers(): { text: string; value: string; sortable?: boolean }[] {
         return [
           { text: 'Username', value: 'username' },

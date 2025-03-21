@@ -29,8 +29,6 @@ class PerspectiveListView(generics.ListAPIView):
         context['project_id'] = self.kwargs.get('project_id')
         return context
 
-        return Response(serialized_perspectives.data)
-
 
 class AssignPerspectiveToProject(APIView):
     permission_classes = [IsAuthenticated & IsAdminUser]
@@ -39,8 +37,12 @@ class AssignPerspectiveToProject(APIView):
         project = get_object_or_404(Project, id=project_id)
         perspective = get_object_or_404(Perspective, id=perspective_id)
 
-        project.perspective = perspective
-        project.save()
+        try:
+            project.delete_annotations()
+            project.perspective = perspective
+            project.save()
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = ProjectSerializer(project)
         return Response({

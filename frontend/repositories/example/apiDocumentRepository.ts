@@ -124,4 +124,9 @@ export class APIExampleRepository implements ExampleRepository {
     const url = `/projects/${projectId}/examples/${exampleId}/states`
     await this.request.post(url, {})
   }
+
+  async resetConfirmation(projectId: string): Promise<void> {
+    const url = `/projects/${projectId}/examples/reset_confirmation`;
+    await this.request.post(url, {});
+  }
 }

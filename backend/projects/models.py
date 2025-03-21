@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 from django.db.models import Manager
 from polymorphic.models import PolymorphicModel
+from django.apps import apps
 
 from roles.models import Role
 
@@ -126,6 +127,24 @@ class Project(PolymorphicModel):
         bulk_clone(self.relationtype_set.all())
 
         return project
+    
+    def delete_annotations(self):
+        """
+        Delete all annotations (categories, spans, text labels, relations, bounding boxes, segmentations)
+        associated with this project.
+        """
+        Category = apps.get_model('labels', 'Category')
+        Span = apps.get_model('labels', 'Span')
+        TextLabel = apps.get_model('labels', 'TextLabel')
+        Relation = apps.get_model('labels', 'Relation')
+        BoundingBox = apps.get_model('labels', 'BoundingBox')
+        Segmentation = apps.get_model('labels', 'Segmentation')
+        Category.objects.filter(example__project=self).delete()
+        Span.objects.filter(example__project=self).delete()
+        TextLabel.objects.filter(example__project=self).delete()
+        Relation.objects.filter(example__project=self).delete()
+        BoundingBox.objects.filter(example__project=self).delete()
+        Segmentation.objects.filter(example__project=self).delete()
 
     def __str__(self):
         return self.name

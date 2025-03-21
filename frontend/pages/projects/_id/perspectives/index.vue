@@ -55,7 +55,7 @@ export default Vue.extend({
       selected: [] as PerspectiveItem[],
       isLoading: false,
       successMessage: '',
-      errorMessage: ''
+      errorMessage: '',
     }
   },
 
@@ -75,7 +75,6 @@ export default Vue.extend({
     }),
 
     canAssociate(): boolean {
-      // Only allow association if exactly one perspective is selected
       return this.selected.length === 1
     },
 
@@ -118,7 +117,7 @@ export default Vue.extend({
             this.errorMessage = '';
           }, 3000);
 
-          return; // Stop the association process
+          return;
         }
         const perspectiveId = this.selected[0].id;
         try {
@@ -126,11 +125,10 @@ export default Vue.extend({
                 this.projectId,
                 perspectiveId
             );
-
-            // Update the current project with the assigned perspective
+            await this.$repositories.example.resetConfirmation(this.projectId);
             this.$store.commit('projects/updateCurrentProjectPerspective', response.data.project.perspective);
 
-            this.successMessage = 'Perspective associated successfully.';
+            this.successMessage = 'Perspective associated successfully. All annotations have been deleted.';
             this.errorMessage = '';
 
             setTimeout(() => {
