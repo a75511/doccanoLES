@@ -33,13 +33,21 @@ class Perspective(models.Model):
         return self.name
 
 
+class AttributeType(models.TextChoices):
+    TEXT = "text", "Text"
+    NUMBER = "number", "Number"
+
 class PerspectiveAttribute(models.Model):
     name = models.CharField(max_length=255, help_text="Nome do atributo (ex.: idade, sexo, localização).")
     perspectives = models.ManyToManyField(Perspective, related_name='attributes')
-    description = models.TextField(blank=True, null=True, help_text="O anotador preencherá este campo durante a anotação.")
+    type = models.CharField(max_length=10, choices=AttributeType.choices, default=AttributeType.TEXT)
+
+    class Meta:
+        unique_together = ("name", "type")
 
     def __str__(self):
-        return f"{self.name} ({', '.join([p.name for p in self.perspectives.all()])})"
+        return f"{self.name} ({self.type})"
+
 
 
 class Project(PolymorphicModel):
