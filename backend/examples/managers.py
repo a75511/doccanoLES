@@ -30,3 +30,42 @@ class ExampleStateManager(Manager):
             if member.username not in members_with_progress:
                 response["progress"].append({"user": member.username, "done": 0})
         return response
+    
+    def reset_confirmation(self, project):
+        self.filter(example__project=project).delete()
+    
+    def check_for_disagreements(self, example):
+        from .models import Disagreement
+        
+        # Get all states for this example
+        states = self.filter(example=example).select_related('confirmed_by')
+        
+        # If there are less than 2 annotations, no disagreement possible
+        if states.count() < 2:
+            return None
+        
+        # Check if all states have the same annotation (you'll need to define what constitutes agreement)
+        # For now, we'll assume we have a method to compare annotations
+        first_state = states.first()
+        disagreements = []
+        
+        for state in states[1:]:
+            if not self._annotations_agree(first_state, state):
+                # Found a disagreement
+                disagreement, created = Disagreement.objects.get_or_create(
+                    example=example,
+                    defaults={'resolved': False}
+                )
+                disagreement.users.add(first_state.confirmed_by, state.confirmed_by)
+                disagreements.append(disagreement)
+        
+        return disagreements if disagreements else None
+    
+    def _annotations_agree(self, state1, state2):
+        """
+        Compare two ExampleStates to see if they agree.
+        This is a placeholder - you'll need to implement actual comparison logic
+        based on your annotation data structure.
+        """
+        # For now, we'll just compare the meta field as a simple example
+        return state1.example.meta == state2.example.meta

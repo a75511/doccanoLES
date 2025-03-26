@@ -41,7 +41,7 @@ class ResetConfirmation(APIView):
         project_id = self.kwargs["project_id"]
         project = get_object_or_404(Project, pk=project_id)
 
-        ExampleState.objects.filter(example__project=project).delete()
+        ExampleState.objects.reset_confirmation(project)
 
         return Response(
             {"detail": "Confirmation status reset successfully for all examples."},

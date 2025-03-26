@@ -6,6 +6,7 @@
         @download="$router.push('dataset/export')"
         @assign="dialogAssignment = true"
         @reset="dialogReset = true"
+        @conflicts="dialogConflicts = true"
       />
       <v-btn
         class="text-capitalize ms-2"
@@ -41,6 +42,13 @@
       <v-dialog v-model="dialogReset">
         <form-reset-assignment @cancel="dialogReset = false" @reset="resetAssignment" />
       </v-dialog>
+      <v-dialog v-model="dialogConflicts" max-width="800">
+        <form-conflicts 
+          v-model="dialogConflicts"
+          :members="members"
+          @compare="redirectToConflictsPage"
+        />
+    </v-dialog>
     </v-card-title>
     <image-list
       v-if="project.isImageProject"
@@ -98,9 +106,11 @@ import FormResetAssignment from '~/components/example/FormResetAssignment.vue'
 import ActionMenu from '~/components/example/ActionMenu.vue'
 import AudioList from '~/components/example/AudioList.vue'
 import ImageList from '~/components/example/ImageList.vue'
+import FormConflicts from '~/components/example/FormConflicts.vue'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 import { ExampleDTO, ExampleListDTO } from '~/services/application/example/exampleData'
 import { MemberItem } from '~/domain/models/member/member'
+
 
 export default Vue.extend({
   components: {
@@ -111,7 +121,8 @@ export default Vue.extend({
     FormAssignment,
     FormDelete,
     FormDeleteBulk,
-    FormResetAssignment
+    FormResetAssignment,
+    FormConflicts
   },
 
   layout: 'project',
@@ -128,10 +139,12 @@ export default Vue.extend({
       dialogDeleteAll: false,
       dialogAssignment: false,
       dialogReset: false,
+      dialogConflicts: false,
       item: {} as ExampleListDTO,
       selected: [] as ExampleDTO[],
       members: [] as MemberItem[],
       user: {} as MemberItem,
+      conflicts: [] as any[],
       isLoading: false,
       isProjectAdmin: false
     }
@@ -229,6 +242,17 @@ export default Vue.extend({
       this.dialogReset = false
       await this.$repositories.assignment.reset(this.projectId)
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    },
+
+    redirectToConflictsPage(member1Id: number, member2Id: number) {
+      this.dialogConflicts = false
+      this.$router.push(this.localePath({
+        path: `/projects/${this.projectId}/disagreements/conflicts`,
+        query: {
+          member1: member1Id.toString(),
+          member2: member2Id.toString()
+        }
+      }))
     }
   }
 })

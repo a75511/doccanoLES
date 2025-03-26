@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comment, Example
+from .models import Comment, Example, Disagreement
 
 
 class ExampleAdmin(admin.ModelAdmin):
@@ -22,6 +22,12 @@ class CommentAdmin(admin.ModelAdmin):
     )
     search_fields = ("user",)
 
+class DisagreementAdmin(admin.ModelAdmin):
+    list_display = ("example", "resolved", "created_at")
+    list_filter = ("resolved",)
+    search_fields = ("example__text", "users__username")
+    raw_id_fields = ("example", "users")  # For performance with large datasets
 
 admin.site.register(Example, ExampleAdmin)
 admin.site.register(Comment, CommentAdmin)
+admin.site.register(Disagreement, DisagreementAdmin)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Assignment, Comment, Example, ExampleState
+from .models import Assignment, Comment, Disagreement, Example, ExampleState
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -23,11 +23,11 @@ class AssignmentSerializer(serializers.ModelSerializer):
         fields = ("id", "assignee", "example", "created_at", "updated_at")
         read_only_fields = ("id", "created_at", "updated_at")
 
-
 class ExampleSerializer(serializers.ModelSerializer):
     annotation_approver = serializers.SerializerMethodField()
     is_confirmed = serializers.SerializerMethodField()
     assignments = serializers.SerializerMethodField()
+    has_disagreement = serializers.SerializerMethodField()
 
     @classmethod
     def get_annotation_approver(cls, instance):
@@ -51,7 +51,10 @@ class ExampleSerializer(serializers.ModelSerializer):
             }
             for assignment in instance.assignments.all()
         ]
-
+    
+    def get_has_disagreement(self, instance):
+        return instance.disagreements.filter(resolved=False).exists()
+    
     class Meta:
         model = Example
         fields = [
@@ -65,8 +68,9 @@ class ExampleSerializer(serializers.ModelSerializer):
             "upload_name",
             "score",
             "assignments",
+            "has_disagreement",  # Add this
         ]
-        read_only_fields = ["filename", "is_confirmed", "upload_name", "assignments"]
+        read_only_fields = ["filename", "is_confirmed", "upload_name", "assignments", "has_disagreement"]
 
 
 class ExampleStateSerializer(serializers.ModelSerializer):
@@ -74,3 +78,14 @@ class ExampleStateSerializer(serializers.ModelSerializer):
         model = ExampleState
         fields = ("id", "example", "confirmed_by", "confirmed_at")
         read_only_fields = ("id", "example", "confirmed_by", "confirmed_at")
+
+class DisagreementSerializer(serializers.ModelSerializer):
+    users = serializers.SerializerMethodField()
+    
+    def get_users(self, obj):
+        return [user.username for user in obj.users.all()]
+    
+    class Meta:
+        model = Disagreement
+        fields = ('id', 'example', 'users', 'created_at', 'resolved')
+        read_only_fields = ('id', 'example', 'users', 'created_at') 
