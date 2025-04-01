@@ -3,6 +3,7 @@ export class UserItem {
     readonly id: number,
     readonly username: string,
     readonly isSuperuser: boolean,
-    readonly isStaff: boolean
+    readonly isStaff: boolean,
+    readonly email?: string,
   ) {}
 }

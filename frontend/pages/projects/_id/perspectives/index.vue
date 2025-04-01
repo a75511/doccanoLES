@@ -94,6 +94,11 @@ export default Vue.extend({
     async checkMemberProgress(): Promise<boolean> {
       try {
         const stats = await this.$repositories.metrics.fetchMemberProgress(this.projectId);
+
+        if (stats.total === 0) {
+          return true;
+        }
+        
         const hasCompletedMember = stats.progress.some((item) => {
           return item.done === stats.total;
         });

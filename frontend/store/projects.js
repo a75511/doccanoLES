@@ -24,7 +24,7 @@ export const mutations = {
     if (state.current) {
       state.current.perspective = perspective;
     }
-  }
+  },
 }
 
 export const actions = {

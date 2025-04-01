@@ -40,3 +40,14 @@ export interface AnnotationComparison {
   }
   differences: AnnotationDifference[]
 }
+
+export interface ComparisonResponse {
+  project_id: number
+  project_name: string
+  member1: MemberItem
+  member2: MemberItem
+  total_compared: number
+  conflicts: AnnotationComparison[]
+  examples: ExampleItem[]
+  conflict_count: number
+}

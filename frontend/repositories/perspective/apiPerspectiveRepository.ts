@@ -37,7 +37,8 @@ function toModel(item: { [key: string]: any }): PerspectiveItem {
         attr.name,
         attr.description
       )
-    )
+    ),
+    item.created_at,
   )
 }
 
