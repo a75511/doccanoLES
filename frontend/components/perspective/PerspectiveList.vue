@@ -9,7 +9,7 @@
       :search="search"
       :loading="isLoading || isSorting"
       :loading-text="$t('generic.loading')"
-      :no-data-text="noDataText"
+      :no-data-text="$t('vuetify.noDataAvailable')"
       :footer-props="{
         showFirstLastPage: true,
         'items-per-page-options': [10, 50, 100],
@@ -20,7 +20,6 @@
       show-select
       @input="$emit('input', $event)"
     >
-
       <template #top>
         <v-text-field
           v-model="search"
@@ -45,14 +44,6 @@
         <span>{{ item.description }}</span>
       </template>
     </v-data-table>
-
-    <v-alert
-      v-if="showEmptyState"
-      type="info"
-      class="mt-4"
-    >
-      No perspectives created yet
-    </v-alert>
   </div>
 </template>
 
@@ -101,7 +92,7 @@ export default Vue.extend({
   },
 
   computed: {
-    headers(): { text: any; value: string; sortable?: boolean }[] {
+    headers() {
       return [
         { text: this.$t('generic.name'), value: 'name', sortable: true },
         { text: this.$t('generic.description'), value: 'description', sortable: false },
@@ -110,58 +101,41 @@ export default Vue.extend({
     },
 
     sortedItems(): PerspectiveItem[] {
-      const assignedPerspectiveId = this.currentProject?.perspective?.id || null;
-
-      const itemsWithAssignedFlag = this.items.map((item) => ({
-        ...item,
-        isAssigned: item.id === assignedPerspectiveId,
-      }));
-
-      // Sort the list so that the assigned perspective appears first
-      const sorted = itemsWithAssignedFlag.sort((a, b) => {
-        if (a.isAssigned) return -1;
-        if (b.isAssigned) return 1;
-        return 0;
-      });
-
-      // Additional sorting if sort options are specified
-      if (this.options.sortBy?.length && !this.isSorting) {
-        const sortField = this.options.sortBy[0];
-        const sortDirection = this.options.sortDesc?.[0] ? -1 : 1;
-
-        // Skip the first item (assigned perspective) when sorting
-        const toSort = sorted[0]?.isAssigned ? sorted.slice(1) : sorted;
-        
-        toSort.sort((a, b) => {
-          if (sortField === 'name') {
-            return a.name.localeCompare(b.name) * sortDirection;
-          } else if (sortField === 'createdAt') {
-            const dateA = new Date(a.createdAt).getTime();
-            const dateB = new Date(b.createdAt).getTime();
-            return (dateA - dateB) * sortDirection;
+      const assignedPerspectiveId = this.currentProject?.perspective?.id || null
+      
+      // Mark assigned items and create a single sorted array
+      return this.items
+        .map(item => ({
+          ...item,
+          isAssigned: item.id === assignedPerspectiveId
+        }))
+        .sort((a, b) => {
+          // Always keep assigned item at the top
+          if (a.isAssigned) return -1
+          if (b.isAssigned) return 1
+          
+          // Apply sorting only if sort options are specified
+          if (this.options.sortBy?.length) {
+            const sortField = this.options.sortBy[0]
+            const sortDirection = this.options.sortDesc?.[0] ? -1 : 1
+            
+            if (sortField === 'name') {
+              return a.name.localeCompare(b.name) * sortDirection
+            } else if (sortField === 'createdAt') {
+              const dateA = new Date(a.createdAt).getTime()
+              const dateB = new Date(b.createdAt).getTime()
+              return (dateA - dateB) * sortDirection
+            }
           }
-          return 0;
-        });
-
-        return sorted[0]?.isAssigned ? [sorted[0], ...toSort] : toSort;
-      }
-
-      return sorted;
-    },
-
-    noDataText(): string {
-      return this.showEmptyState ? '' : String(this.$t('vuetify.noDataAvailable'));
-    },
-
-    showEmptyState(): boolean {
-      return !this.isLoading && !this.isSorting && this.items.length === 0 && !this.search;
+          
+          return 0
+        })
     }
   },
 
   watch: {
     options: {
       handler() {
-        this.isSorting = true;
         this.updateQuery({
           query: {
             limit: this.options.itemsPerPage.toString(),
@@ -169,9 +143,6 @@ export default Vue.extend({
             q: this.search
           }
         });
-        setTimeout(() => {
-          this.isSorting = false;
-        }, 300);
       },
       deep: true
     },

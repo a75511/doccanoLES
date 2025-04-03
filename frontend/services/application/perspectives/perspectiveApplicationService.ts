@@ -20,6 +20,9 @@ export class PerspectiveApplicationService {
       new SearchQuery(query.limit, query.offset, query.q, query.sortBy, query.sortDesc)
       return await this.repository.list(projectId, searchQuery)
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e // Let the middleware handle database errors
+      }
       throw new Error(e.response?.data?.detail || 'Failed to fetch perspectives.')
     }
   }
@@ -30,7 +33,26 @@ export class PerspectiveApplicationService {
         const response = await this.repository.assignToProject(projectId, perspectiveId);
         return response;
     } catch (e: any) {
-        throw new Error(e.response?.data?.detail || 'Failed to assign perspective to project.');
+      if (e.response?.status === 500) {
+        throw e // Let the middleware handle database errors
+      }
+      throw new Error(e.response?.data?.detail || 'Failed to fetch perspectives.')
     }
+}
+
+public async getPerspective(perspectiveId: number): Promise<{ data: PerspectiveItem }> {
+  try {
+    return await this.repository.getPerspective(perspectiveId)
+  } catch (e: any) {
+    throw new Error(e.response?.data?.detail || 'Failed to fetch perspective details.')
+  }
+}
+
+public async getAttributesForPerspective(perspectiveId: number): Promise<{ data: any[] }> {
+  try {
+    return await this.repository.getAttributesForPerspective(perspectiveId)
+  } catch (e: any) {
+    throw new Error(e.response?.data?.detail || 'Failed to fetch perspective attributes.')
+  }
 }
 }

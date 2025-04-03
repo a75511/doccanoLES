@@ -46,7 +46,7 @@ export default Vue.extend({
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject', 'isProjectAdmin'],
+  middleware: ['check-auth', 'auth', 'setCurrentProject'],
 
   data() {
     return {
@@ -61,12 +61,26 @@ export default Vue.extend({
 
   async fetch() {
     this.isLoading = true
-    await this.$store.dispatch('projects/setCurrentProject', this.projectId);
-    this.item = await this.$services.perspective.list(
-      this.projectId,
-      this.$route.query as unknown as SearchQueryData
-    )
-    this.isLoading = false
+    try {
+      this.item = await this.$services.perspective.list(
+        this.projectId,
+        this.$route.query as unknown as SearchQueryData
+      )
+      this.errorMessage = ''
+    } catch (error: any) {
+        console.error('Error fetching perspectives:', error)
+        if (error.response?.data?.error) {
+          this.errorMessage = error.response.data.error
+        } else if (error.response?.data?.detail) {
+          this.errorMessage = error.response.data.detail
+        } else if (error instanceof Error) {
+          this.errorMessage = error.message
+        } else {
+          this.errorMessage = 'Failed to fetch perspectives. Please try again.'
+        }
+      } finally {
+        this.isLoading = false
+      }
   },
 
   computed: {
@@ -105,7 +119,6 @@ export default Vue.extend({
 
         return !hasCompletedMember;
       } catch (error) {
-        console.error('Failed to fetch member progress:', error);
         return false; // Assume the worst-case scenario and block the association
       }
     },

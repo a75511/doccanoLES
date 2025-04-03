@@ -67,4 +67,20 @@ export class APIPerspectiveRepository {
     const url = `/projects/${projectId}/assign-perspective/${perspectiveId}`;
     return await this.request.post(url);
 }
+
+async getPerspective(perspectiveId: number): Promise<{ data: PerspectiveItem }> {
+  const url = `/perspectives/${perspectiveId}`
+  const response = await this.request.get(url)
+  return {
+    data: toModel(response.data)
+  }
+}
+
+async getAttributesForPerspective(perspectiveId: number): Promise<{ data: any[] }> {
+  const url = `/perspectives/${perspectiveId}/attributes`
+  const response = await this.request.get(url)
+  return {
+    data: response.data
+  }
+}
 }

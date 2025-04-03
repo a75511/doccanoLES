@@ -26,14 +26,16 @@ export const mutations = {
     }
   },
 }
-
 export const actions = {
   async setCurrentProject({ commit }, projectId) {
     try {
       const project = await this.$services.project.findById(projectId)
       commit('setCurrent', project)
     } catch (error) {
-      throw new Error(error)
+      if (error.response && error.response.status === 500) {
+        throw new Error('Database currently unavailable. Please try again later.')
+      }
+      throw error
     }
   }
 }

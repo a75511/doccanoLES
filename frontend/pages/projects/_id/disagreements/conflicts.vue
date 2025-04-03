@@ -25,38 +25,41 @@
                 <v-col cols="12" md="3" class="pr-0">
                   <v-card outlined>
                     <v-card-title class="subtitle-1">
-                      Examples List
+                      Annotations List
                     </v-card-title>
                     <v-card-text class="pa-0">
-                      <v-list dense>
-                        <v-list-item-group v-model="selectedExampleIndex" color="primary">
-                          <v-list-item
-                            v-for="(example) in examples"
-                            :key="example.id"
-                            :class="{
-                              'highlight-conflict': hasConflict(example.id),
-                              'mb-1': true
-                            }"
-                          >
-                            <v-list-item-content>
-                              <v-list-item-title>
-                                Example #{{ example.id }}
-                                <v-chip
-                                  v-if="hasConflict(example.id)"
-                                  x-small
-                                  color="error"
-                                  class="ml-1"
-                                >
-                                  Conflict
-                                </v-chip>
-                              </v-list-item-title>
-                              <v-list-item-subtitle class="text-truncate">
-                                {{ truncateText(example.text, 50) }}
-                              </v-list-item-subtitle>
-                            </v-list-item-content>
-                          </v-list-item>
-                        </v-list-item-group>
-                      </v-list>
+                      <div :style="{ maxHeight: 
+                        $vuetify.breakpoint.mobile ? '30vh' : '30vh', overflowY: 'auto' }">
+                        <v-list dense>
+                          <v-list-item-group v-model="selectedExampleIndex" color="primary">
+                            <v-list-item
+                              v-for="(example) in examples"
+                              :key="example.id"
+                              :class="{
+                                'highlight-conflict': hasConflict(example.id),
+                                'mb-1': true
+                              }"
+                            >
+                              <v-list-item-content>
+                                <v-list-item-title>
+                                  Annotation #{{ example.id }}
+                                  <v-chip
+                                    v-if="hasConflict(example.id)"
+                                    x-small
+                                    color="error"
+                                    class="ml-1"
+                                  >
+                                    Conflict
+                                  </v-chip>
+                                </v-list-item-title>
+                                <v-list-item-subtitle class="text-truncate">
+                                  {{ truncateText(example.text, 50) }}
+                                </v-list-item-subtitle>
+                              </v-list-item-content>
+                            </v-list-item>
+                          </v-list-item-group>
+                        </v-list>
+                      </div>
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -202,7 +205,15 @@ export default Vue.extend({
         this.error = 'Please select two members to compare'
       }
     } catch (error: any) {
-      this.error = error.message || 'Failed to load comparison data'
+      if (error.response?.data?.error) {
+        this.error = error.response.data.error
+      } else if (error.response?.data?.detail) {
+        this.error = error.response.data.detail
+      } else if (error instanceof Error) {
+        this.error = error.message
+      } else {
+        this.error = 'Failed to load comparison data'
+      }
     } finally {
       this.loading = false
     }
@@ -228,5 +239,20 @@ export default Vue.extend({
 
 .v-list-item--active {
   background-color: #e3f2fd;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>
