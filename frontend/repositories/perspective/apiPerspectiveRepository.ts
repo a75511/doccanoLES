@@ -1,7 +1,7 @@
 import { Page } from '@/domain/models/page'
 import { PerspectiveItem } from '@/domain/models/perspective/perspective'
 import ApiService from '@/services/api.service'
-import { PerspectiveAttributeItem } from '~/domain/models/perspective/perspectiveAttribute'
+import { PerspectiveAttributeItem } from '@/domain/models/perspective/perspectiveAttribute'
 import { Project } from '@/domain/models/project/project'
 
 const sortableFieldList = ['name', 'createdAt'] as const
@@ -35,7 +35,8 @@ function toModel(item: { [key: string]: any }): PerspectiveItem {
         attr.id,
         attr.perspective_id,
         attr.name,
-        attr.description
+        attr.type,
+        attr.options ? attr.options.map((option: any) => option.value) : []
       )
     )
   )
@@ -65,5 +66,44 @@ export class APIPerspectiveRepository {
    Promise<{ data: { project: Project } }> {
     const url = `/projects/${projectId}/assign-perspective/${perspectiveId}`;
     return await this.request.post(url);
+}
+
+async create(
+  projectId: string,
+  name: string,
+  description: string,
+  attributes: { name: string; type: string; options?: { value: string }[] }[]
+): Promise<PerspectiveItem> {
+  const url = `/projects/${projectId}/perspectives/create`;
+  const payload = {
+    name,
+    description,
+    attributes,
+  };
+  
+  try {
+    const response = await this.request.post(url, payload);
+    return toModel(response.data.perspective);
+  } catch (error: any) {
+    if (error.response) {
+      const { data, status } = error.response;
+      
+      if (status === 400 && data.code === 'perspective_exists') {
+        throw new Error(data.message);
+      } else if (status === 503 && data.code === 'database_error') {
+        throw new Error('Database is currently unavailable. Please try again later.');
+      } else if (status === 400 && data.code === 'integrity_error') {
+        throw new Error('Invalid data provided. Please check your input.');
+      } else if (status >= 500) {
+        throw new Error('Database is currently unavailable. Please try again later.');
+      } else {
+        throw new Error(data.message || 'Failed to create perspective.');
+      }
+    } else if (error.request) {
+      throw new Error('Network error. Please check your internet connection.');
+    } else {
+      throw new Error('An unexpected error occurred.');
+    }
+  }
 }
 }

@@ -36,19 +36,27 @@ class Perspective(models.Model):
 class AttributeType(models.TextChoices):
     TEXT = "text", "Text"
     NUMBER = "number", "Number"
+    BOOLEAN = "boolean", "Boolean"
+    LIST = "list", "List"
+
 
 class PerspectiveAttribute(models.Model):
+    perspective = models.ForeignKey(Perspective, on_delete=models.CASCADE, related_name="attributes")
     name = models.CharField(max_length=255, help_text="Nome do atributo (ex.: idade, sexo, localização).")
-    perspectives = models.ManyToManyField(Perspective, related_name='attributes')
     type = models.CharField(max_length=10, choices=AttributeType.choices, default=AttributeType.TEXT)
 
     class Meta:
-        unique_together = ("name", "type")
+        unique_together = ("perspective", "name", "type")
 
     def __str__(self):
         return f"{self.name} ({self.type})"
 
+class PerspectiveAttributeListOption(models.Model):
+    attribute = models.ForeignKey(PerspectiveAttribute, on_delete=models.CASCADE, related_name="options")
+    value = models.CharField(max_length=255, help_text="Opção disponível para um atributo do tipo 'List'.")
 
+    def __str__(self):
+        return f"{self.attribute.name} - {self.value}"
 
 class Project(PolymorphicModel):
     name = models.CharField(max_length=100)

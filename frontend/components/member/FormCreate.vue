@@ -94,8 +94,13 @@ export default Vue.extend({
 
   async fetch() {
     this.isLoading = true
-    this.users = await this.$repositories.user.list(this.username)
-    this.isLoading = false
+    try {
+      this.users = await this.$services.user.searchUsers(this.username)
+    } catch (e) {
+      console.error('Failed to search users:', e)
+    } finally {
+      this.isLoading = false
+    }
   },
 
   computed: {

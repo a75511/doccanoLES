@@ -13,6 +13,7 @@ from .models import (
     TextClassificationProject,
     Perspective,
     PerspectiveAttribute,
+    PerspectiveAttributeListOption,
 )
 
 
@@ -49,11 +50,14 @@ class PerspectiveAdmin(admin.ModelAdmin):
 
 
 class PerspectiveAttributeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'get_perspective')
+    list_display = ("name", "perspective", "type")
+    list_filter = ("type",)
+    search_fields = ("name", "perspective__name")
 
-    def get_perspective(self, obj):
-        return ', '.join([p.name for p in obj.perspectives.all()]) if obj.perspectives.exists() else "No Perspectives yet"
-    get_perspective.short_description = 'Perspectives'
+
+class PerspectiveAttributeListOptionAdmin(admin.ModelAdmin):
+    list_display = ("attribute", "value")
+    search_fields = ("attribute__name", "value")
 
 
 admin.site.register(Member, MemberAdmin)
@@ -68,3 +72,4 @@ admin.site.register(ImageClassificationProject, ProjectAdmin)
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Perspective, PerspectiveAdmin)
 admin.site.register(PerspectiveAttribute, PerspectiveAttributeAdmin)
+admin.site.register(PerspectiveAttributeListOption, PerspectiveAttributeListOptionAdmin)

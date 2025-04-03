@@ -8,7 +8,8 @@ from .views.assignment import (
 )
 from .views.comment import CommentDetail, CommentList
 from .views.example import ExampleDetail, ExampleList
-from .views.example_state import ExampleStateList
+from .views.example_state import ExampleStateList, ResetConfirmation
+from .views.disagreement import DisagreementList, DisagreementDetail, DisagreementCompare, AutoDisagreementAnalysis
 
 urlpatterns = [
     path(route="assignments", view=AssignmentList.as_view(), name="assignment_list"),
@@ -20,4 +21,9 @@ urlpatterns = [
     path(route="comments", view=CommentList.as_view(), name="comment_list"),
     path(route="comments/<int:comment_id>", view=CommentDetail.as_view(), name="comment_detail"),
     path(route="examples/<int:example_id>/states", view=ExampleStateList.as_view(), name="example_state_list"),
+    path(route="examples/reset_confirmation", view=ResetConfirmation.as_view(), name="reset_confirmation"),
+    path(route="disagreements", view=DisagreementList.as_view(), name="disagreement_list"),
+    path(route="disagreements/<int:disagreement_id>", view=DisagreementDetail.as_view(), name="disagreement_detail"),
+    path(route="disagreements/compare", view=DisagreementCompare.as_view(), name="disagreement_compare"),
+    path(route="disagreements/auto_analyze", view=AutoDisagreementAnalysis.as_view(), name="auto_disagreement_analysis"),
 ]

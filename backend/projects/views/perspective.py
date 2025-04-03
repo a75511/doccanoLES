@@ -4,10 +4,11 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from projects.models import Perspective, Project
-from projects.serializers import PerspectiveSerializer, ProjectSerializer
+from django.db import DatabaseError, IntegrityError
+from projects.models import Perspective, Project, PerspectiveAttribute, PerspectiveAttributeListOption
+from projects.serializers import PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeSerializer, PerspectiveAttributeListOptionSerializer
 
-class PerspectiveListView(generics.ListAPIView):
+class PerspectiveListView(generics.ListCreateAPIView):
     serializer_class = PerspectiveSerializer
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
     search_fields = ("name", "description")
@@ -29,7 +30,70 @@ class PerspectiveListView(generics.ListAPIView):
         context['project_id'] = self.kwargs.get('project_id')
         return context
 
+class CreatePerspectiveView(generics.CreateAPIView):
+    serializer_class = PerspectiveSerializer
+    permission_classes = [IsAuthenticated & IsAdminUser]
 
+    def create(self, request, *args, **kwargs):
+        try:
+            name = request.data.get('name')
+            if Perspective.objects.filter(name=name).exists():
+                return Response(
+                    {
+                        "message": "A perspective with this name already exists.",
+                        "code": "perspective_exists"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            perspective = serializer.save()
+            
+            return Response({
+                "message": "Perspective created successfully.",
+                "perspective": PerspectiveSerializer(perspective).data
+            }, status=status.HTTP_201_CREATED)
+            
+        except DatabaseError:
+            return Response(
+                {
+                    "message": "Database operation failed. Please try again later.",
+                    "code": "database_error"
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "message": "Data integrity error occurred. Please check your input.",
+                    "code": "integrity_error"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "message": "An unexpected error occurred.",
+                    "code": "unexpected_error"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def get_queryset(self):
+        return Perspective.objects.all()
+
+
+class PerspectiveAttributeListOptionView(generics.ListCreateAPIView):
+    serializer_class = PerspectiveAttributeListOptionSerializer
+    permission_classes = [IsAuthenticated & IsAdminUser]
+
+    def get_queryset(self):
+        attribute_id = self.kwargs["attribute_id"]
+        return PerspectiveAttributeListOption.objects.filter(attribute_id=attribute_id)
+
+    def perform_create(self, serializer):
+        attribute = get_object_or_404(PerspectiveAttribute, id=self.kwargs["attribute_id"])
+        serializer.save(attribute=attribute)    
 
 class AssignPerspectiveToProject(APIView):
     permission_classes = [IsAuthenticated & IsAdminUser]

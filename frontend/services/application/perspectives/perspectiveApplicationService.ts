@@ -1,7 +1,7 @@
-import { Page } from '~/domain/models/page'
-import { PerspectiveItem } from '~/domain/models/perspective/perspective'
-import { Project } from '~/domain/models/project/project'
-import { APIPerspectiveRepository, SearchQuery } from '~/repositories/perspective/apiPerspectiveRepository'
+import { Page } from '@/domain/models/page'
+import { PerspectiveItem } from '@/domain/models/perspective/perspective'
+import { Project } from '@/domain/models/project/project'
+import { APIPerspectiveRepository, SearchQuery } from '@/repositories/perspective/apiPerspectiveRepository'
 
 export interface SearchQueryData {
   limit: string
@@ -32,5 +32,14 @@ export class PerspectiveApplicationService {
     } catch (e: any) {
         throw new Error(e.response?.data?.detail || 'Failed to assign perspective to project.');
     }
-}
+  }
+  
+  public async create(
+    projectId: string,
+    name: string,
+    description: string,
+    attributes: { name: string; type: string; options?: { value: string }[] }[]
+  ): Promise<PerspectiveItem> {
+    return await this.repository.create(projectId, name, description, attributes);
+  }
 }

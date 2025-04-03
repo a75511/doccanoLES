@@ -39,7 +39,8 @@ import {
   mdiHome,
   mdiLabel,
   mdiPlayCircleOutline,
-  mdiEyeSettings
+  mdiEyeSettings,
+  mdiSetLeft
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -130,6 +131,12 @@ export default {
           text: this.$t('perspectives.perspectives'),
           link: 'perspectives',
           isVisible: this.isProjectAdmin
+        },
+        {
+          icon: mdiSetLeft,
+          text: "Disagreements",
+          link: 'disagreements',
+          isVisible: this.isProjectAdmin && this.project.projectType !== 'text'
         }
       ]
       return items.filter((item) => item.isVisible)

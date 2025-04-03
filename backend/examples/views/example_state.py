@@ -1,11 +1,14 @@
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from examples.models import Example, ExampleState
 from examples.serializers import ExampleStateSerializer
 from projects.models import Project
-from projects.permissions import IsProjectMember
+from projects.permissions import IsProjectMember, IsProjectAdmin
 
 
 class ExampleStateList(generics.ListCreateAPIView):
@@ -30,3 +33,17 @@ class ExampleStateList(generics.ListCreateAPIView):
         else:
             example = get_object_or_404(Example, pk=self.kwargs["example_id"])
             serializer.save(example=example, confirmed_by=self.request.user)
+
+class ResetConfirmation(APIView):
+    permission_classes = [IsAuthenticated & IsProjectAdmin]
+
+    def post(self, request, *args, **kwargs):
+        project_id = self.kwargs["project_id"]
+        project = get_object_or_404(Project, pk=project_id)
+
+        ExampleState.objects.reset_confirmation(project)
+
+        return Response(
+            {"detail": "Confirmation status reset successfully for all examples."},
+            status=status.HTTP_200_OK
+        )
