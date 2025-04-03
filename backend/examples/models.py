@@ -84,3 +84,12 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+class Disagreement(models.Model):
+    example = models.ForeignKey(to=Example, on_delete=models.CASCADE, related_name="disagreements")
+    users = models.ManyToManyField(to=User, related_name="disagreements")
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ["-created_at"] 

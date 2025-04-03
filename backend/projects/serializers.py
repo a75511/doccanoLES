@@ -16,6 +16,8 @@ from .models import (
     TextClassificationProject,
     Perspective,
     PerspectiveAttribute,
+    PerspectiveAttributeListOption,
+    AttributeType,
 )
 
 
@@ -48,25 +50,59 @@ class TagSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "project")
 
+class PerspectiveAttributeListOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PerspectiveAttributeListOption
+        fields = ["id", "value"]
+
 class PerspectiveAttributeSerializer(serializers.ModelSerializer):
-    perspective_name = serializers.CharField(source="perspective.name", read_only=True)
+    options = PerspectiveAttributeListOptionSerializer(many=True, required=False)
 
     class Meta:
         model = PerspectiveAttribute
-        fields = ["id", "perspective_name", "name", "description"]
+        fields = ["id", "name", "type", "options"]
+
+    def validate(self, data):
+        # Se o tipo do atributo for "List", garantir que as opções sejam passadas
+        if data.get("type") == AttributeType.LIST and "options" not in data:
+            raise serializers.ValidationError("Atributos do tipo 'List' devem ter opções associadas.")
+        return data
+
+    def create(self, validated_data):
+        options_data = validated_data.pop("options", [])  # Extrai as opções se existirem
+        attribute = PerspectiveAttribute.objects.create(**validated_data)
+
+        # Se o atributo for do tipo 'LIST', criar as opções associadas
+        if attribute.type == AttributeType.LIST:
+            for option_data in options_data:
+                PerspectiveAttributeListOption.objects.create(attribute=attribute, **option_data)
+
+        return attribute
 
 class PerspectiveSerializer(serializers.ModelSerializer):
-    attributes = PerspectiveAttributeSerializer(many=True, read_only=True)
-    projects = serializers.SerializerMethodField()
+    attributes = PerspectiveAttributeSerializer(many=True)
 
     class Meta:
         model = Perspective
-        fields = ["id", "name", "description", "attributes", "projects"]
+        fields = ["id", "name", "description", "attributes"]
 
+    def create(self, validated_data):
+        attributes_data = validated_data.pop("attributes", [])
+        perspective = Perspective.objects.create(**validated_data)
+
+        for attribute_data in attributes_data:
+            options_data = attribute_data.pop("options", [])
+            attribute = PerspectiveAttribute.objects.create(perspective=perspective, **attribute_data)
+
+            if attribute.type == AttributeType.LIST:
+                for option_data in options_data:
+                    PerspectiveAttributeListOption.objects.create(attribute=attribute, **option_data)
+
+        return perspective
+    
     def get_projects(self, instance):
         # Return a list of project IDs that use this perspective
         return [project.id for project in instance.projects.all()]
-
 
 class ProjectSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, required=False)
