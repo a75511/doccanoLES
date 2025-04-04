@@ -46,14 +46,14 @@ import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
 export default {
   props: {
-    isProjectAdmin: {
-      type: Boolean,
-      default: false,
-      required: true
+    currentRole: {
+      type: String,
+      default: null,
+      required: false
     },
     project: {
       type: Object,
-      default: () => {},
+      default: () => ({}),
       required: true
     }
   },
@@ -66,6 +66,16 @@ export default {
   },
 
   computed: {
+    isProjectAdmin() {
+      return this.currentRole === 'project_admin'
+    },
+    isApprover() {
+      return this.currentRole === 'annotation_approver'
+    },
+    isAnnotator() {
+      return this.currentRole === 'annotator'
+    },
+
     filteredItems() {
       const items = [
         {
@@ -130,13 +140,13 @@ export default {
           icon: mdiEyeSettings,
           text: this.$t('perspectives.perspectives'),
           link: 'perspectives',
-          isVisible: this.isProjectAdmin
+          isVisible: this.isProjectAdmin || this.isApprover
         },
         {
           icon: mdiSetLeft,
           text: "Disagreements",
           link: 'disagreements',
-          isVisible: this.isProjectAdmin && this.project.projectType !== 'text'
+          isVisible: (this.isProjectAdmin || this.isApprover) && this.project.projectType !== 'text'
         }
       ]
       return items.filter((item) => item.isVisible)

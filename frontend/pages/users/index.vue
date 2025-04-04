@@ -1,6 +1,15 @@
 <template>
   <v-card>
-    
+    <v-card-title>
+      <v-btn
+        v-if="isAdmin"
+        class="text-capitalize"
+        color="primary"
+        @click="$router.push('/users/create')"
+      >
+        Create
+      </v-btn>
+    </v-card-title>
     <user-list
       v-model="selected"
       :items="users.items"
@@ -14,6 +23,7 @@
 <script lang="ts">
 import _ from 'lodash'
 import Vue from 'vue'
+import { mapGetters } from 'vuex'
 import UserList from '~/components/users/UserList.vue'
 import { Page } from '~/domain/models/page'
 import { UserItem } from '~/domain/models/user/user'
@@ -39,6 +49,10 @@ export default Vue.extend({
     this.isLoading = true
     this.users = await this.$services.user.list(this.$route.query as unknown as SearchQueryData)
     this.isLoading = false
+  },
+
+  computed: {
+    ...mapGetters('auth', ['isAdmin']),
   },
 
   watch: {

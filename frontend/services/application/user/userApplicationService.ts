@@ -6,6 +6,22 @@ import { SearchQueryData } from '~/services/application/project/projectApplicati
 export class UserApplicationService {
   constructor(private readonly repository: APIUserRepository) {}
 
+  public async findById(id: string): Promise<UserItem> {
+    try {
+      return await this.repository.findById(id)
+    } catch (e: any) {
+      throw new Error(e.response?.data?.detail || 'User not found')
+    }
+  }
+
+  public async getProfile(): Promise<UserItem> {
+    try {
+      return await this.repository.getProfile()
+    } catch (e: any) {
+      throw new Error(e.response?.data?.detail || 'Failed to fetch profile')
+    }
+  }
+
   public async list(query: SearchQueryData): Promise<Page<UserItem>> {
     try {
       return await this.repository.list(query)
@@ -27,19 +43,18 @@ export class UserApplicationService {
     }
   }
 
-  public async findById(id: string): Promise<UserItem> {
+  public async createUser(userData: {
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    is_staff?: boolean;
+    is_superuser?: boolean;
+  }): Promise<UserItem> {
     try {
-      return await this.repository.findById(id)
+      return await this.repository.createUser(userData);
     } catch (e: any) {
-      throw new Error(e.response?.data?.detail || 'User not found')
-    }
-  }
-
-  public async getProfile(): Promise<UserItem> {
-    try {
-      return await this.repository.getProfile()
-    } catch (e: any) {
-      throw new Error(e.response?.data?.detail || 'Failed to fetch profile')
+      throw new Error(e.response?.data?.detail || 'Failed to create user');
     }
   }
 }

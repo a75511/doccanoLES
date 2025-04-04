@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db import DatabaseError, IntegrityError
 from projects.models import Perspective, Project, PerspectiveAttribute, PerspectiveAttributeListOption
-from projects.serializers import PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeSerializer, PerspectiveAttributeListOptionSerializer
+from projects.serializers import PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeListOptionSerializer
 
 class PerspectiveListView(generics.ListCreateAPIView):
     serializer_class = PerspectiveSerializer
@@ -102,8 +102,12 @@ class AssignPerspectiveToProject(APIView):
         project = get_object_or_404(Project, id=project_id)
         perspective = get_object_or_404(Perspective, id=perspective_id)
 
-        project.perspective = perspective
-        project.save()
+        try:
+            project.delete_annotations()
+            project.perspective = perspective
+            project.save()
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = ProjectSerializer(project)
         return Response({

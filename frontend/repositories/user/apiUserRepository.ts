@@ -33,24 +33,28 @@ function toModel(item: { [key: string]: any }): UserItem {
     item.username,
     item.is_superuser,
     item.is_staff,
+    item.first_name,
+    item.last_name,
     item.email,
     item.sex,
     item.age
   )
 }
 
-// function toPayload(item: UserItem): { [key: string]: any } {
-//   return {
-//     username: item.username,
-//     email: item.email,
-//     is_staff: item.isStaff,
-//     is_superuser: item.isSuperuser
-//     // Add other fields as needed
-//   }
-// }
-
 export class APIUserRepository {
   constructor(private readonly request = ApiService) {}
+
+  async findById(id: string): Promise<UserItem> {
+    const url = `/users/${id}`
+    const response = await this.request.get(url)
+    return toModel(response.data)
+  }
+
+  async getProfile(): Promise<UserItem> {
+    const url = '/me'
+    const response = await this.request.get(url)
+    return toModel(response.data)
+  }
 
   async list(queryData: SearchQueryData): Promise<Page<UserItem>> {
     const query = new UserSearchQuery(queryData)
@@ -70,38 +74,16 @@ export class APIUserRepository {
     )
   }
 
-  async findById(id: string): Promise<UserItem> {
-    const url = `/users/${id}`
-    const response = await this.request.get(url)
-    return toModel(response.data)
+  async createUser(userData: { 
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    is_staff?: boolean;
+    is_superuser?: boolean;
+  }): Promise<UserItem> {
+    const url = '/users/create';
+    const response = await this.request.post(url, userData);
+    return toModel(response.data);
   }
-
-  async getProfile(): Promise<UserItem> {
-    const url = '/me'
-    const response = await this.request.get(url)
-    return toModel(response.data)
-  }
-
-  // async create(item: UserItem): Promise<UserItem> {
-  //   const url = '/users'
-  //   const payload = toPayload(item)
-  //   const response = await this.request.post(url, payload)
-  //   return toModel(response.data)
-  // }
-
-  // async update(item: UserItem): Promise<void> {
-  //   const url = `/users/${item.id}`
-  //   const payload = toPayload(item)
-  //   await this.request.patch(url, payload)
-  // }
-
-  // async bulkDelete(userIds: number[]): Promise<void> {
-  //   const url = '/users'
-  //   await this.request.delete(url, { ids: userIds })
-  // }
-
-  // async updateRoles(userId: number, roles: string[]): Promise<void> {
-  //   const url = `/users/${userId}/roles`
-  //   await this.request.patch(url, { roles })
-  // }
 }

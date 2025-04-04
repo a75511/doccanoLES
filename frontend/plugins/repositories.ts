@@ -26,6 +26,8 @@ import { APIUserRepository } from '@/repositories/user/apiUserRepository'
 import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationRepository'
 import { APIPerspectiveRepository } from '~/repositories/perspective/apiPerspectiveRepository'
 import { APIAnalysisRepository } from '~/repositories/analysis/apiAnalysisRepository'
+import { APIDisagreementRepository } from '~/repositories/disagreement/apiDisagreementRepository'
+
 export interface Repositories {
   // User
   auth: APIAuthRepository
@@ -46,6 +48,7 @@ export interface Repositories {
   option: LocalStorageOptionRepository
   assignment: APIAssignmentRepository
   analysis: APIAnalysisRepository
+  disagreement: APIDisagreementRepository
 
   // Auto Labeling
   config: APIConfigRepository
@@ -99,6 +102,7 @@ const repositories: Repositories = {
   option: new LocalStorageOptionRepository(),
   assignment: new APIAssignmentRepository(),
   analysis: new APIAnalysisRepository(),
+  disagreement: new APIDisagreementRepository(),
 
   // Auto Labeling
   config: new APIConfigRepository(),

@@ -42,7 +42,6 @@
         >
           <v-icon small>mdi-pencil</v-icon>
         </v-btn>
-        <!-- Add more action buttons here as needed -->
       </template>
     </v-data-table>
   </template>

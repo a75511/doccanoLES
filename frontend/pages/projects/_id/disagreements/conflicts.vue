@@ -218,6 +218,59 @@ export default Vue.extend({
     }
   },
 
+  async fetch() {
+    this.loading = true
+    this.error = null
+    
+    try {
+      const member1Id = this.$route.query.member1
+      const member2Id = this.$route.query.member2
+      const projectId = this.$route.params.id
+
+      if (member1Id && member2Id) {
+        const response = await this.$services.disagreement.compare(
+          projectId,
+          Number(member1Id),
+          Number(member2Id),
+          this.searchText
+        ) as ComparisonResponse;
+
+        if (response.examples.length === 0) {
+          this.error = 'No common annotations found between these members'
+          this.examples = []
+          this.comparisons = []
+          this.conflictCount = 0
+          return
+        }
+
+        this.member1Name = response.member1.username;
+        this.member2Name = response.member2.username;
+        this.conflictCount = response.conflict_count;
+
+        this.comparisons = response.conflicts;
+        this.examples = response.examples || [];
+        
+        if (this.examples.length > 0) {
+          this.selectedExampleId = this.processedExamples[0]?.id || null
+        }
+      } else {
+        this.error = 'Please select two members to compare'
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        this.error = error.response.data.error
+      } else if (error.response?.data?.detail) {
+        this.error = error.response.data.detail
+      } else if (error instanceof Error) {
+        this.error = error.message
+      } else {
+        this.error = 'Failed to load comparison data'
+      }
+    } finally {
+      this.loading = false
+    }
+  },
+
   computed: {
     processedExamples(): ExampleItem[] {
       return this.examples
@@ -277,59 +330,6 @@ export default Vue.extend({
 
     truncateText(text: string, length: number): string {
       return text.length > length ? text.substring(0, length) + '...' : text
-    }
-  },
-
-  async fetch() {
-    this.loading = true
-    this.error = null
-    
-    try {
-      const member1Id = this.$route.query.member1
-      const member2Id = this.$route.query.member2
-      const projectId = this.$route.params.id
-
-      if (member1Id && member2Id) {
-        const response = await this.$services.disagreement.compare(
-          projectId,
-          Number(member1Id),
-          Number(member2Id),
-          this.searchText
-        ) as ComparisonResponse;
-
-        if (response.examples.length === 0) {
-          this.error = 'No common annotations found between these members'
-          this.examples = []
-          this.comparisons = []
-          this.conflictCount = 0
-          return
-        }
-
-        this.member1Name = response.member1.username;
-        this.member2Name = response.member2.username;
-        this.conflictCount = response.conflict_count;
-
-        this.comparisons = response.conflicts;
-        this.examples = response.examples || [];
-        
-        if (this.examples.length > 0) {
-          this.selectedExampleId = this.processedExamples[0]?.id || null
-        }
-      } else {
-        this.error = 'Please select two members to compare'
-      }
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        this.error = error.response.data.error
-      } else if (error.response?.data?.detail) {
-        this.error = error.response.data.detail
-      } else if (error instanceof Error) {
-        this.error = error.message
-      } else {
-        this.error = 'Failed to load comparison data'
-      }
-    } finally {
-      this.loading = false
     }
   }
 })

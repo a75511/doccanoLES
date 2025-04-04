@@ -29,7 +29,6 @@
     >
       {{ $t('header.projects') }}
     </v-btn>
-    <!--{{isAdmin}} --><!-- Para debug -->
     <v-btn
       v-if="isAuthenticated"
       text

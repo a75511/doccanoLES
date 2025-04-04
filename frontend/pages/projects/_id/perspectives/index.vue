@@ -2,6 +2,13 @@
   <v-card>
     <v-card-title>
       <v-btn
+        class="text-capitalize"
+        color="primary"
+        :to="`/projects/${projectId}/perspectives/create`"
+        >
+        {{ $t('generic.create') }}
+      </v-btn>
+      <v-btn
         class="text-capitalize ms-2"
         :disabled="!canAssociate"
         outlined
@@ -36,7 +43,7 @@ import Vue from 'vue'
 import PerspectiveList from '@/components/perspective/PerspectiveList.vue'
 import { PerspectiveItem } from '~/domain/models/perspective/perspective'
 import { Page } from '~/domain/models/page'
-import { SearchQueryData } from '~/services/application/perspectives/perspectiveApplicationService'
+import { SearchQueryData } from '~/services/application/perspective/perspectiveApplicationService'
 
 
 export default Vue.extend({

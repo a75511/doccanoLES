@@ -108,6 +108,8 @@
   import { DisagreementAnalysisSummary, ExampleDisagreement } from '~/domain/models/example/disagreement'
   
   export default Vue.extend({
+  
+    layout: 'project',
     data() {
       return {
         threshold: 40,
@@ -125,8 +127,6 @@
         ]
       }
     },
-  
-    layout: 'project',
 
     methods: {
       async analyze() {

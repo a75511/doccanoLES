@@ -10,6 +10,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 Any setting that is configured via an environment variable may
 also be set in a `.env` file in the project base directory.
 """
+import os
 from os import path
 
 import dj_database_url
@@ -94,7 +95,10 @@ WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [path.join(BASE_DIR, "client/dist")],
+        "DIRS": [
+            os.path.join(BASE_DIR, "client/dist"),  # Mantém o caminho do frontend
+            os.path.join(BASE_DIR, "backend", "templates"),  # Adiciona o caminho para os templates do Django
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -193,8 +197,12 @@ LOGOUT_REDIRECT_URL = "/"
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": path.join(BASE_DIR, "db.sqlite3"),
+        "ENGINE": "django.db.backends.postgresql",  # Use Postgres engine
+        "NAME": "doccano",  # Your database name
+        "USER": "postgres",  # Your database username
+        "PASSWORD": "",  # Your database password
+        "HOST": "localhost",  # Database host (use your DB server address)
+        "PORT": "5432",  # Default Postgres port
     }
 }
 # Change 'default' database configuration with $DATABASE_URL.
@@ -240,14 +248,17 @@ if DEBUG:
 IMPORT_BATCH_SIZE = env.int("IMPORT_BATCH_SIZE", 1000)
 
 # Necessary for email verification of new accounts
-EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", False)
-EMAIL_HOST = env("EMAIL_HOST", None)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", None)
-EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", None)
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", True)  # Ensure it's True for Outlook/Gmail
+EMAIL_HOST = env("EMAIL_HOST", "smtp.office365.com")  # Default to Outlook if not set
 EMAIL_PORT = env.int("EMAIL_PORT", 587)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "webmaster@localhost")
-if not EMAIL_HOST:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")  # Your email address
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")  # Your app password
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 
 
 # User media files

@@ -77,8 +77,8 @@
         <v-btn
           color="primary"
           large
-          @click="$router.push('/users')"
           class="text-capitalize"
+          @click="$router.push('/users')"
         >
           <v-icon left>{{ mdiArrowLeft }}</v-icon>
           Back to Users
@@ -126,12 +126,12 @@ export default Vue.extend({
     };
   },
 
-  async created() {
-    await this.fetchUser();
-  },
-
   computed: {
     ...mapGetters('auth', ['isAdmin']),
+  },
+  
+  async created() {
+    await this.fetchUser();
   },
 
   methods: {

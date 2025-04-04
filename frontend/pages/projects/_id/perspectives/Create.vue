@@ -81,8 +81,8 @@
               </v-row>
             </v-card-text>
             <v-card-actions>
-              <v-btn color="primary" text @click="addAttribute" 
-              :disabled="perspective.attributes.length >= 15">
+              <v-btn color="primary" text :disabled="perspective.attributes.length >= 15" 
+              @click="addAttribute">
                 {{ $t('perspectives.add_attribute') }}
               </v-btn>
             </v-card-actions>
@@ -90,7 +90,7 @@
         </v-form>
       </v-card-text>
       <v-card-actions>
-        <v-btn color="primary" :disabled="!valid" @click="createPerspective" :loading="loading">
+        <v-btn color="primary" :disabled="!valid" :loading="loading" @click="createPerspective">
           {{ $t('generic.create') }}
         </v-btn>
         <v-btn color="grey" @click="$router.back()">
@@ -120,7 +120,7 @@ export default Vue.extend({
       perspective: {
         name: '',
         description: '',
-        attributes: [{ name: '', type: '', options: [] }],
+        attributes: [{ name: '', type: '', options: [] as { value: string }[] }],
       },
       attributeTypes: ['Text', 'Number', 'Boolean', 'List'],
       rules: {

@@ -6,6 +6,7 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Count
+from django.db.models import Q
 from examples.models import Example, ExampleState, Disagreement
 from projects.models import Member, Project
 from examples.models import Disagreement
@@ -39,6 +40,7 @@ class DisagreementCompare(APIView):
     def get(self, request, project_id):
         member1_id = request.query_params.get('member1')
         member2_id = request.query_params.get('member2')
+        search_query = request.query_params.get('q', '')
         
         if not member1_id or not member2_id:
             return Response(
@@ -77,9 +79,22 @@ class DisagreementCompare(APIView):
             user2_examples = {state.example_id for state in user2_states}
             common_examples = user1_examples & user2_examples
             
+            # Get all examples data
+            examples_queryset = Example.objects.filter(
+                id__in=common_examples
+            )
+            
+            if search_query:
+                examples_queryset = examples_queryset.filter(
+                    Q(text__icontains=search_query) |
+                    Q(meta__icontains=search_query)
+                )
+
+            all_examples = examples_queryset.all()
+            
             conflicts = []
             for example_id in common_examples:
-                example = Example.objects.get(pk=example_id)
+                example = examples_queryset.get(pk=example_id)
                 user1_state = user1_states.get(example_id=example_id)
                 user2_state = user2_states.get(example_id=example_id)
                 
@@ -88,45 +103,61 @@ class DisagreementCompare(APIView):
                 user2_annotations = self._get_annotations(user2_state)
                 
                 # Compare annotations
-                if not self._annotations_equal(user1_annotations, user2_annotations):
-                    conflicts.append({
-                        "example": {
-                            "id": example.id,
-                            "text": example.text,
-                            "meta": example.meta,
-                        },
-                        "member1": {
-                            "id": member1.id,
-                            "user_id": user1.id,
-                            "username": user1.username,
-                            "annotations": user1_annotations,
-                        },
-                        "member2": {
-                            "id": member2.id,
-                            "user_id": user2.id,
-                            "username": user2.username,
-                            "annotations": user2_annotations,
-                        },
-                        "differences": self._find_differences(user1_annotations, user2_annotations)
-                    })
+                differences = self._find_differences(user1_annotations, user2_annotations)
+                
+                conflicts.append({
+                    "example": {
+                        "id": example.id,
+                        "text": example.text,
+                        "meta": example.meta,
+                    },
+                    "member1": {
+                        "id": member1.id,
+                        "user_id": user1.id,
+                        "username": user1.username,
+                        "annotations": user1_annotations,
+                    },
+                    "member2": {
+                        "id": member2.id,
+                        "user_id": user2.id,
+                        "username": user2.username,
+                        "annotations": user2_annotations,
+                    },
+                    "differences": differences
+                })
             
             return Response({
-                "project_id": project.id,
-                "project_name": project.name,
-                "member1": {
-                    "id": member1.id,
-                    "user_id": user1.id,
-                    "username": user1.username,
-                },
-                "member2": {
-                    "id": member2.id,
-                    "user_id": user2.id,
-                    "username": user2.username,
-                },
-                "total_compared": len(common_examples),
-                "conflicts": conflicts,
-                "conflict_count": len(conflicts),
-            })
+            "project_id": project.id,
+            "project_name": project.name,
+            "member1": {
+                "id": member1.id,
+                "user_id": user1.id,
+                "username": user1.username,
+            },
+            "member2": {
+                "id": member2.id,
+                "user_id": user2.id,
+                "username": user2.username,
+            },
+            "total_compared": len(common_examples),
+            "conflicts": conflicts,
+            "examples": [{
+                "id": example.id,
+                "text": example.text,
+                "meta": example.meta,
+                "annotation_approver": example.annotations_approved_by.username if example.annotations_approved_by else None,
+                "comment_count": example.comment_count,
+                "file_url": example.filename.url if example.filename else '',
+                "is_confirmed": example.states.filter(confirmed_by__in=[user1, user2]).exists(),
+                "filename": example.upload_name,
+                "assignments": [{
+                    "id": str(assignment.id),
+                    "assignee": assignment.assignee.username,
+                    "assignee_id": assignment.assignee.id
+                } for assignment in example.assignments.all()]
+            } for example in all_examples],
+            "conflict_count": len([c for c in conflicts if c['differences']]),
+        })
             
         except Exception as e:
             return Response(

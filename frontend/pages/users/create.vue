@@ -3,7 +3,9 @@
     <v-card-title>Create New User</v-card-title>
     <v-card-text>
       <v-form v-model="valid">
-        <user-name-field v-model="userItem.username" outlined autofocus />
+        <first-name-field v-model="userItem.first_name" outlined autofocus />
+        <last-name-field v-model="userItem.last_name" outlined />
+        <user-name-field v-model="userItem.username" outlined />
         <user-email-field v-model="userItem.email" outlined />
         <v-checkbox
           v-model="userItem.is_staff"
@@ -22,8 +24,8 @@
         color="secondary"
         style="text-transform: none"
         outlined
-        @click="goToUsers"
         class="mr-2"
+        @click="goToUsers"
       >
         Cancel
       </v-btn>
@@ -50,10 +52,15 @@
 import Vue from 'vue';
 import UserNameField from '@/components/users/UserNameField.vue';
 import UserEmailField from '@/components/users/UserEmailField.vue';
+import FirstNameField from '@/components/users/UserFirstNameField.vue';
+import LastNameField from '@/components/users/UserLastNameField.vue';
 import { APIUserRepository } from '@/repositories/user/apiUserRepository';
+import { UserApplicationService } from '~/services/application/user/userApplicationService';
 
 export default Vue.extend({
   components: {
+    FirstNameField,
+    LastNameField,
     UserNameField,
     UserEmailField,
   },
@@ -65,6 +72,8 @@ export default Vue.extend({
     return {
       valid: false,
       userItem: {
+        first_name: '',
+        last_name: '',
         username: '',
         email: '',
         is_staff: false,
@@ -77,25 +86,32 @@ export default Vue.extend({
   methods: {
     async createUser() {
       try {
-        const userRepository = new APIUserRepository();
-        await userRepository.createUser(this.userItem);
+        const repository = new APIUserRepository();
+        const service = new UserApplicationService(repository);
+        await service.createUser({
+          username: this.userItem.username,
+          email: this.userItem.email,
+          first_name: this.userItem.first_name,
+          last_name: this.userItem.last_name,
+          is_staff: this.userItem.is_staff,
+          is_superuser: this.userItem.is_superuser,
+        });
+        
         this.successMessage = 'User created successfully!';
         this.errorMessage = '';
         setTimeout(() => {
           this.$router.push('/users');
         }, 3000);
       } catch (error: any) {
-          console.log('Full error object:', error); // Log the full error object
-          console.log('Error response:', error.response); // Log the response object
-          if (error.response && error.response.data && error.response.data.error) {
-            this.errorMessage = error.response.data.error;
-          } else if (error.response && error.response.data && error.response.data.detail) {
-            this.errorMessage = error.response.data.detail;
-          } else if (error instanceof Error) {
-            this.errorMessage = error.message;
-          } else {
-            this.errorMessage = 'Failed to create user. Please try again.';
-          }
+        if (error.response && error.response.data && error.response.data.error) {
+          this.errorMessage = error.response.data.error;
+        } else if (error.response && error.response.data && error.response.data.detail) {
+          this.errorMessage = error.response.data.detail;
+        } else if (error instanceof Error) {
+          this.errorMessage = error.message;
+        } else {
+          this.errorMessage = 'Failed to create user. Please try again.';
+        }
 
         this.successMessage = '';
 

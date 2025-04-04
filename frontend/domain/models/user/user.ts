@@ -4,6 +4,10 @@ export class UserItem {
     readonly username: string,
     readonly isSuperuser: boolean,
     readonly isStaff: boolean,
-    readonly email?: string,
+    readonly firstName: string,
+    readonly lastName: string,
+    readonly email: string,
+    readonly sex: string,
+    readonly age: number
   ) {}
 }

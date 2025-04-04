@@ -1,12 +1,12 @@
 import re
-from rest_framework.views import exception_handler
-from rest_framework import generics, status
+from rest_framework import generics, filters, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from .serializers import UserSerializer
+from .serializers import UserSerializer, UserPolymorphicSerializer
 from django.core.mail import send_mail
 from django.conf import settings
 import string
@@ -15,20 +15,6 @@ from .models import UserData
 from .permissions import IsSuperUser
 
 EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-
-def custom_exception_handler(exc, context):
-    # Call REST framework's default exception handler first
-    response = exception_handler(exc, context)
-
-    if response is None:
-        # If the exception is not handled by DRF, return a custom JSON response
-        response = Response(
-            {'error': 'Database currently unavailable. Please try again later.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-    return response
-
 
 User = get_user_model()
 
@@ -39,17 +25,56 @@ class Me(APIView):
         serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
-class Users(generics.ListAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = None
+class UserList(generics.ListCreateAPIView): 
+    serializer_class = UserPolymorphicSerializer
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
+    search_fields = ("username", "email")
+    ordering_fields = ["username", "email", "date_joined"]
+    ordering = ["-date_joined"]
+    
+    def get_permissions(self):
+        if self.request.method == "GET":
+            self.permission_classes = [IsAuthenticated]
+        else:
+            self.permission_classes = [IsAuthenticated & IsSuperUser]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = User.objects.all()
+
+        if not self.request.user.is_staff:
+            return queryset.filter(id=self.request.user.id)
+
+        queryset = queryset.filter(userdata__created_by=self.request.user)
+ 
         search_query = self.request.query_params.get('q', None)
         if search_query:
-            queryset = queryset.filter(username__icontains=search_query) | queryset.filter(email__icontains=search_query)
+            queryset = queryset.filter(
+                username__icontains=search_query
+            ) | queryset.filter(
+                email__icontains=search_query
+            )
         return queryset
+    
+class UserDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserPolymorphicSerializer
+    lookup_url_kwarg = "user_id"
+    
+    def get_permissions(self):
+        if self.request.method == "GET":
+            self.permission_classes = [IsAuthenticated]
+        else:
+            self.permission_classes = [IsAuthenticated & IsSuperUser]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Non-admins can only access their own profile
+        if not self.request.user.is_superuser:
+            return queryset.filter(id=self.request.user.id)
+        # Admins can only access users they created
+        return queryset.filter(userdata__created_by=self.request.user)
 
 class CustomUserCreateView(APIView):
     permission_classes = [IsAuthenticated & IsSuperUser]
@@ -57,6 +82,8 @@ class CustomUserCreateView(APIView):
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
         email = request.data.get('email')
+        first_name = request.data.get('first_name', '')
+        last_name = request.data.get('last_name', '')
         is_staff = request.data.get('is_staff', False)
         is_superuser = request.data.get('is_superuser', False)
         sex = request.data.get('sex', '')
@@ -92,12 +119,14 @@ class CustomUserCreateView(APIView):
             user = User.objects.create_user(
                 username=username,
                 email=email,
+                first_name=first_name,
+                last_name=last_name,
                 password=password,
                 is_staff=is_staff,
                 is_superuser=is_superuser,
             )
 
-            UserData.objects.create(user=user, sex=sex, age=age)
+            UserData.objects.create(user=user, sex=sex, age=age, created_by=request.user)
 
             send_mail(
                 subject='Doccano account',
