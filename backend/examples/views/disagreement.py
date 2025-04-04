@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from examples.models import Example, ExampleState, Disagreement
 from projects.models import Member, Project
 from examples.models import Disagreement
@@ -38,6 +39,7 @@ class DisagreementCompare(APIView):
     def get(self, request, project_id):
         member1_id = request.query_params.get('member1')
         member2_id = request.query_params.get('member2')
+        search_query = request.query_params.get('q', '')
         
         if not member1_id or not member2_id:
             return Response(
@@ -77,11 +79,21 @@ class DisagreementCompare(APIView):
             common_examples = user1_examples & user2_examples
             
             # Get all examples data
-            all_examples = Example.objects.filter(id__in=common_examples)
+            examples_queryset = Example.objects.filter(
+                id__in=common_examples
+            )
+            
+            if search_query:
+                examples_queryset = examples_queryset.filter(
+                    Q(text__icontains=search_query) |
+                    Q(meta__icontains=search_query)
+                )
+
+            all_examples = examples_queryset.all()
             
             conflicts = []
             for example_id in common_examples:
-                example = Example.objects.get(pk=example_id)
+                example = examples_queryset.get(pk=example_id)
                 user1_state = user1_states.get(example_id=example_id)
                 user2_state = user2_states.get(example_id=example_id)
                 

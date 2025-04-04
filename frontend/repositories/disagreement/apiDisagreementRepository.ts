@@ -39,18 +39,23 @@ export class APIDisagreementRepository {
     )
   }
 
-async compare(
-  projectId: string, 
-  member1Id: number, 
-  member2Id: number
-): Promise<ComparisonResponse> {
-  const url = `/projects/${projectId}/disagreements/compare`
-  const response = await this.request.get(url, {
-    params: { 
+  async compare(
+    projectId: string, 
+    member1Id: number, 
+    member2Id: number,
+    searchQuery?: string
+  ): Promise<ComparisonResponse> {
+    const url = `/projects/${projectId}/disagreements/compare`
+    const params: any = { 
       member1: member1Id, 
       member2: member2Id 
     }
-  })
+    
+    if (searchQuery) {
+      params.q = searchQuery
+    }
+    
+    const response = await this.request.get(url, { params })
   
   return {
     project_id: response.data.project_id,

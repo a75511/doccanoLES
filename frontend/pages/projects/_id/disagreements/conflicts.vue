@@ -9,10 +9,48 @@
             </v-toolbar-title>
             <v-spacer></v-spacer>
             <v-chip color="secondary">
-              {{ conflictCount }} conflicts found ({{ examples.length }} total)
+              {{ conflictCount }} conflicts ({{ processedExamples.length }} shown)
             </v-chip>
           </v-toolbar>
-          
+          <v-card-text class="py-2 px-4 grey lighten-4">
+            <v-row align="center" no-gutters>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="searchText"
+                  :prepend-inner-icon="mdiMagnify"
+                  label="Search annotations"
+                  single-line
+                  hide-details
+                  outlined
+                  dense
+                  clearable
+                ></v-text-field>
+              </v-col>
+              
+              <v-col cols="12" md="4" class="px-md-2">
+                <v-select
+                  v-model="filterOption"
+                  :items="filterOptions"
+                  label="Filter by"
+                  outlined
+                  dense
+                  hide-details
+                ></v-select>
+              </v-col>
+              
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="sortOrder"
+                  :items="sortOptions"
+                  label="Sort by"
+                  outlined
+                  dense
+                  hide-details
+                ></v-select>
+              </v-col>
+            </v-row>
+          </v-card-text>
+
           <v-card-text>
             <v-alert v-if="error" type="error">
               {{ error }}
@@ -24,17 +62,15 @@
               <v-row>
                 <v-col cols="12" md="3" class="pr-0">
                   <v-card outlined>
-                    <v-card-title class="subtitle-1">
-                      Annotations List
-                    </v-card-title>
                     <v-card-text class="pa-0">
-                      <div :style="{ maxHeight: 
-                        $vuetify.breakpoint.mobile ? '30vh' : '30vh', overflowY: 'auto' }">
+                      <div :style="{ maxHeight:
+                         $vuetify.breakpoint.mobile ? '30vh' : '30vh', overflowY: 'auto' }">
                         <v-list dense>
-                          <v-list-item-group v-model="selectedExampleIndex" color="primary">
+                          <v-list-item-group v-model="selectedExampleId" color="primary">
                             <v-list-item
-                              v-for="(example) in examples"
+                              v-for="example in processedExamples"
                               :key="example.id"
+                              :value="example.id"
                               :class="{
                                 'highlight-conflict': hasConflict(example.id),
                                 'mb-1': true
@@ -42,7 +78,7 @@
                             >
                               <v-list-item-content>
                                 <v-list-item-title>
-                                  Annotation #{{ example.id }}
+                                  #{{ example.id }}
                                   <v-chip
                                     v-if="hasConflict(example.id)"
                                     x-small
@@ -130,9 +166,23 @@
 
 <script lang="ts">
 import Vue from 'vue'
+import { mdiMagnify } from '@mdi/js'
 import AnnotationDiff from '~/components/example/AnnotationDiff.vue'
 import { AnnotationComparison, ComparisonResponse } from '~/domain/models/disagreement/disagreement'
 import { ExampleItem } from '~/domain/models/example/example'
+
+type FilterOption = 'all' | 'conflict' | 'noConflict'
+type SortOrder = 'asc' | 'desc'
+
+interface FilterOptionItem {
+  text: string
+  value: FilterOption
+}
+
+interface SortOptionItem {
+  text: string
+  value: SortOrder
+}
 
 export default Vue.extend({
   components: {
@@ -146,18 +196,51 @@ export default Vue.extend({
     return {
       examples: [] as ExampleItem[],
       comparisons: [] as AnnotationComparison[],
-      selectedExampleIndex: 0,
       member1Name: '',
       member2Name: '',
       conflictCount: 0,
       loading: false,
-      error: null as string | null
+      error: null as string | null,
+      searchText: '',
+      filterOption: 'all' as FilterOption,
+      sortOrder: 'asc' as SortOrder,
+      filterOptions: [
+        { text: 'All Annotations', value: 'all' },
+        { text: 'With Conflicts Only', value: 'conflict' },
+        { text: 'Without Conflicts', value: 'noConflict' }
+      ] as FilterOptionItem[],
+      sortOptions: [
+        { text: 'ID (Ascending)', value: 'asc' },
+        { text: 'ID (Descending)', value: 'desc' }
+      ] as SortOptionItem[],
+      selectedExampleId: null as number | null,
+      mdiMagnify
     }
   },
 
   computed: {
+    processedExamples(): ExampleItem[] {
+      return this.examples
+        .filter(example => {
+          // Search filter
+          const matchesSearch = this.searchText 
+            ? example.text.toLowerCase().includes(this.searchText.toLowerCase())
+            : true
+          
+          // Conflict filter
+          const hasConflict = this.hasConflict(example.id)
+          if (this.filterOption === 'conflict') return matchesSearch && hasConflict
+          if (this.filterOption === 'noConflict') return matchesSearch && !hasConflict
+          return matchesSearch
+        })
+        .sort((a, b) => {
+          // ID sorting
+          return this.sortOrder === 'asc' ? a.id - b.id : b.id - a.id
+        })
+    },
+
     currentExample(): ExampleItem | null {
-      return this.examples[this.selectedExampleIndex] || null
+      return this.processedExamples.find(e => e.id === this.selectedExampleId) || null
     },
 
     currentAnnotations(): AnnotationComparison {
@@ -175,6 +258,28 @@ export default Vue.extend({
     }
   },
 
+  watch: {
+    processedExamples(newVal) {
+      if (newVal.length === 0) {
+        this.selectedExampleId = null
+        return
+      }
+      if (!newVal.some((e: { id: number | null }) => e.id === this.selectedExampleId)) {
+        this.selectedExampleId = newVal[0]?.id || null
+      }
+    }
+  },
+
+  methods: {
+    hasConflict(exampleId: number): boolean {
+      return this.comparisons.some(c => c.example.id === exampleId && c.differences.length > 0)
+    },
+
+    truncateText(text: string, length: number): string {
+      return text.length > length ? text.substring(0, length) + '...' : text
+    }
+  },
+
   async fetch() {
     this.loading = true
     this.error = null
@@ -188,8 +293,17 @@ export default Vue.extend({
         const response = await this.$services.disagreement.compare(
           projectId,
           Number(member1Id),
-          Number(member2Id)
+          Number(member2Id),
+          this.searchText
         ) as ComparisonResponse;
+
+        if (response.examples.length === 0) {
+          this.error = 'No common annotations found between these members'
+          this.examples = []
+          this.comparisons = []
+          this.conflictCount = 0
+          return
+        }
 
         this.member1Name = response.member1.username;
         this.member2Name = response.member2.username;
@@ -198,8 +312,8 @@ export default Vue.extend({
         this.comparisons = response.conflicts;
         this.examples = response.examples || [];
         
-        if (this.examples.length === 0) {
-          this.error = 'No examples found for comparison'
+        if (this.examples.length > 0) {
+          this.selectedExampleId = this.processedExamples[0]?.id || null
         }
       } else {
         this.error = 'Please select two members to compare'
@@ -217,16 +331,6 @@ export default Vue.extend({
     } finally {
       this.loading = false
     }
-  },
-
-  methods: {
-    hasConflict(exampleId: number): boolean {
-      return this.comparisons.some(c => c.example.id === exampleId && c.differences.length > 0)
-    },
-
-    truncateText(text: string, length: number): string {
-      return text.length > length ? text.substring(0, length) + '...' : text
-    }
   }
 })
 </script>
@@ -241,7 +345,19 @@ export default Vue.extend({
   background-color: #e3f2fd;
 }
 
-/* Scrollbar styling */
+/* Improved controls styling */
+.v-card__text.controls {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Better spacing for mobile */
+@media (max-width: 959px) {
+  .v-col {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
