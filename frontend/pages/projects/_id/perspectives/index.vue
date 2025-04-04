@@ -46,7 +46,7 @@ export default Vue.extend({
 
   layout: 'project',
 
-  middleware: ['check-auth', 'auth', 'setCurrentProject', 'isProjectAdmin'],
+  middleware: ['check-auth', 'auth', 'setCurrentProject'],
 
   data() {
     return {
@@ -55,18 +55,32 @@ export default Vue.extend({
       selected: [] as PerspectiveItem[],
       isLoading: false,
       successMessage: '',
-      errorMessage: ''
+      errorMessage: '',
     }
   },
 
   async fetch() {
     this.isLoading = true
-    await this.$store.dispatch('projects/setCurrentProject', this.projectId);
-    this.item = await this.$services.perspective.list(
-      this.projectId,
-      this.$route.query as unknown as SearchQueryData
-    )
-    this.isLoading = false
+    try {
+      this.item = await this.$services.perspective.list(
+        this.projectId,
+        this.$route.query as unknown as SearchQueryData
+      )
+      this.errorMessage = ''
+    } catch (error: any) {
+        console.error('Error fetching perspectives:', error)
+        if (error.response?.data?.error) {
+          this.errorMessage = error.response.data.error
+        } else if (error.response?.data?.detail) {
+          this.errorMessage = error.response.data.detail
+        } else if (error instanceof Error) {
+          this.errorMessage = error.message
+        } else {
+          this.errorMessage = 'Failed to fetch perspectives. Please try again.'
+        }
+      } finally {
+        this.isLoading = false
+      }
   },
 
   computed: {
@@ -75,7 +89,6 @@ export default Vue.extend({
     }),
 
     canAssociate(): boolean {
-      // Only allow association if exactly one perspective is selected
       return this.selected.length === 1
     },
 
@@ -95,13 +108,17 @@ export default Vue.extend({
     async checkMemberProgress(): Promise<boolean> {
       try {
         const stats = await this.$repositories.metrics.fetchMemberProgress(this.projectId);
+
+        if (stats.total === 0) {
+          return true;
+        }
+        
         const hasCompletedMember = stats.progress.some((item) => {
           return item.done === stats.total;
         });
 
         return !hasCompletedMember;
       } catch (error) {
-        console.error('Failed to fetch member progress:', error);
         return false; // Assume the worst-case scenario and block the association
       }
     },
@@ -118,7 +135,7 @@ export default Vue.extend({
             this.errorMessage = '';
           }, 3000);
 
-          return; // Stop the association process
+          return;
         }
         const perspectiveId = this.selected[0].id;
         try {
@@ -126,11 +143,10 @@ export default Vue.extend({
                 this.projectId,
                 perspectiveId
             );
-
-            // Update the current project with the assigned perspective
+            await this.$repositories.example.resetConfirmation(this.projectId);
             this.$store.commit('projects/updateCurrentProjectPerspective', response.data.project.perspective);
 
-            this.successMessage = 'Perspective associated successfully.';
+            this.successMessage = 'Perspective associated successfully. All annotations have been deleted.';
             this.errorMessage = '';
 
             setTimeout(() => {

@@ -7,6 +7,19 @@ class ApiService {
     this.instance = axios.create({
       baseURL: process.env.baseUrl
     })
+    this.instance.interceptors.request.use((config) => {
+      console.log('Request Config:', config);
+      return config;
+    });
+
+    // Add response interceptor for logging
+    this.instance.interceptors.response.use((response) => {
+      console.log('Response Data:', response.data);
+      return response;
+    }, (error) => {
+      console.error('Response Error:', error.response?.data || error.message);
+      return Promise.reject(error);
+    });
   }
 
   request(method, url, data = {}, config = {}) {

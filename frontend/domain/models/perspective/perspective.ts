@@ -6,6 +6,7 @@ export class PerspectiveItem {
     readonly name: string,
     readonly description: string,
     readonly attributes: PerspectiveAttributeItem[] = [],
+    readonly createdAt: string = '',
   ) {}
 
   static create(

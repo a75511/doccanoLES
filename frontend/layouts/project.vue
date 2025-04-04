@@ -6,8 +6,11 @@
       </template>
     </the-header>
 
-    <v-navigation-drawer v-model="drawerLeft" app clipped color="">
-      <the-side-bar :is-project-admin="isProjectAdmin" :project="currentProject" />
+    <v-navigation-drawer v-model="drawerLeft" app clipped>
+      <the-side-bar 
+        :current-role="currentUserRole"
+        :project="currentProject" 
+      />
     </v-navigation-drawer>
 
     <v-main>
@@ -36,7 +39,7 @@ export default {
   data() {
     return {
       drawerLeft: null,
-      isProjectAdmin: false
+      currentUserRole: null
     }
   },
 
@@ -45,8 +48,12 @@ export default {
   },
 
   async created() {
-    const member = await this.$repositories.member.fetchMyRole(this.$route.params.id)
-    this.isProjectAdmin = member.isProjectAdmin
+    try {
+      const member = await this.$repositories.member.fetchMyRole(this.$route.params.id)
+      this.currentUserRole = member.rolename
+    } catch (error) {
+      this.currentUserRole = null
+    }
   }
 }
 </script>
