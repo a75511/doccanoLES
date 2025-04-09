@@ -12,6 +12,7 @@
               {{ conflictCount }} conflicts ({{ processedExamples.length }} shown)
             </v-chip>
           </v-toolbar>
+
           <v-card-text class="py-2 px-4 grey lighten-4">
             <v-row align="center" no-gutters>
               <v-col cols="12" md="4">
@@ -24,7 +25,7 @@
                   outlined
                   dense
                   clearable
-                ></v-text-field>
+                />
               </v-col>
               
               <v-col cols="12" md="4" class="px-md-2">
@@ -35,7 +36,7 @@
                   outlined
                   dense
                   hide-details
-                ></v-select>
+                />
               </v-col>
               
               <v-col cols="12" md="4">
@@ -46,7 +47,7 @@
                   outlined
                   dense
                   hide-details
-                ></v-select>
+                />
               </v-col>
             </v-row>
           </v-card-text>
@@ -56,102 +57,151 @@
               {{ error }}
             </v-alert>
 
-            <v-progress-linear v-if="loading" indeterminate></v-progress-linear>
+            <v-progress-linear v-if="loading" indeterminate/>
 
             <template v-if="!loading && !error">
               <v-row>
-                <v-col cols="12" md="3" class="pr-0">
-                  <v-card outlined>
-                    <v-card-text class="pa-0">
-                      <div :style="{ maxHeight:
-                         $vuetify.breakpoint.mobile ? '30vh' : '30vh', overflowY: 'auto' }">
-                        <v-list dense>
-                          <v-list-item-group v-model="selectedExampleId" color="primary">
-                            <v-list-item
-                              v-for="example in processedExamples"
-                              :key="example.id"
-                              :value="example.id"
-                              :class="{
-                                'highlight-conflict': hasConflict(example.id),
-                                'mb-1': true
-                              }"
-                            >
-                              <v-list-item-content>
-                                <v-list-item-title>
-                                  #{{ example.id }}
-                                  <v-chip
-                                    v-if="hasConflict(example.id)"
-                                    x-small
-                                    color="error"
-                                    class="ml-1"
-                                  >
-                                    Conflict
-                                  </v-chip>
-                                </v-list-item-title>
-                                <v-list-item-subtitle class="text-truncate">
-                                  {{ truncateText(example.text, 50) }}
-                                </v-list-item-subtitle>
-                              </v-list-item-content>
-                            </v-list-item>
-                          </v-list-item-group>
-                        </v-list>
-                      </div>
-                    </v-card-text>
-                  </v-card>
-                </v-col>
+                <v-col cols="12">
+                  <v-data-table
+                    :headers="dynamicHeaders"
+                    :items="processedExamples"
+                    :search="searchText"
+                    :items-per-page="10"
+                    class="elevation-1"
+                    @click:row="selectExample"
+                  >
+                    <template #[`item.id`]="{ item }">
+                      <v-chip small>
+                        #{{ item.id }}
+                      </v-chip>
+                    </template>
 
-                <v-col cols="12" md="9" class="pl-0">
-                  <v-card v-if="currentExample" outlined>
+                    <template #[`item.text`]="{ item }">
+                      <div class="text-truncate" style="max-width: 300px">
+                        {{ item.text }}
+                      </div>
+                    </template>
+
+                    <template #[`item.member1_annotations`]="{ item }">
+                      <div v-if="getComparison(item.id)">
+                        <v-chip
+                          v-for="(annotation, idx) in getComparison(item.id)?.member1.annotations"
+                          :key="idx"
+                          small
+                          :color="getLabelColor(annotation, item.id, 'member1')"
+                          class="mr-1 mb-1"
+                        >
+                          {{ annotation.label }}
+                        </v-chip>
+                      </div>
+                    </template>
+
+                    <template #[`item.member2_annotations`]="{ item }">
+                      <div v-if="getComparison(item.id)">
+                        <v-chip
+                          v-for="(annotation, idx) in getComparison(item.id)?.member2.annotations"
+                          :key="idx"
+                          small
+                          :color="getLabelColor(annotation, item.id, 'member2')"
+                          class="mr-1 mb-1"
+                        >
+                          {{ annotation.label }}
+                        </v-chip>
+                      </div>
+                    </template>
+
+                    <template #[`item.conflict_status`]="{ item }">
+                      <v-chip
+                        small
+                        :color="hasConflict(item.id) ? 'error' : 'success'"
+                        dark
+                      >
+                        {{ hasConflict(item.id) ? 'Conflict' : 'Agreement' }}
+                      </v-chip>
+                    </template>
+                  </v-data-table>
+                </v-col>
+              </v-row>
+
+              <v-row v-if="selectedExample" class="mt-4">
+                <v-col cols="12">
+                  <v-card outlined>
+                    <v-card-title class="subtitle-1">
+                      Detailed View for Example #{{ selectedExample.id }}
+                    </v-card-title>
                     <v-card-text>
                       <v-row>
                         <v-col cols="12" md="6">
-                          <h3 class="mb-4">
+                          <h3 class="mb-2">
                             {{ member1Name }}'s Annotations
                             <v-chip small color="primary" class="ml-2">
-                              {{ currentAnnotations.member1.annotations.length }} labels
+                              {{ selectedAnnotations.member1.annotations.length }} labels
                             </v-chip>
                           </h3>
-                          <annotation-diff 
-                            :original="currentExample.text"
-                            :annotations="currentAnnotations.member1.annotations"
-                            :differences="currentAnnotations.differences"
-                            user-type="member1"
-                          />
+                          <v-card outlined>
+                            <v-card-text>
+                              <div class="text-content">
+                                {{ selectedExample.text }}
+                              </div>
+                              <div class="mt-3">
+                                <v-chip
+                                  v-for="(annotation, idx) 
+                                  in selectedAnnotations.member1.annotations"
+                                  :key="`m1-${idx}`"
+                                  small
+                                  :color="getLabelColor(annotation, selectedExample.id, 'member1')"
+                                  class="mr-1 mb-1"
+                                >
+                                  {{ annotation.label }}
+                                </v-chip>
+                              </div>
+                            </v-card-text>
+                          </v-card>
                         </v-col>
                         <v-col cols="12" md="6">
-                          <h3 class="mb-4">
+                          <h3 class="mb-2">
                             {{ member2Name }}'s Annotations
                             <v-chip small color="primary" class="ml-2">
-                              {{ currentAnnotations.member2.annotations.length }} labels
+                              {{ selectedAnnotations.member2.annotations.length }} labels
                             </v-chip>
                           </h3>
-                          <annotation-diff 
-                            :original="currentExample.text"
-                            :annotations="currentAnnotations.member2.annotations"
-                            :differences="currentAnnotations.differences"
-                            user-type="member2"
-                          />
+                          <v-card outlined>
+                            <v-card-text>
+                              <div class="text-content">
+                                {{ selectedExample.text }}
+                              </div>
+                              <div class="mt-3">
+                                <v-chip
+                                  v-for="(annotation, idx) 
+                                  in selectedAnnotations.member2.annotations"
+                                  :key="`m2-${idx}`"
+                                  small
+                                  :color="getLabelColor(annotation, selectedExample.id, 'member2')"
+                                  class="mr-1 mb-1"
+                                >
+                                  {{ annotation.label }}
+                                </v-chip>
+                              </div>
+                            </v-card-text>
+                          </v-card>
                         </v-col>
                       </v-row>
 
                       <v-alert 
-                        v-if="currentAnnotations.differences.length" 
+                        v-if="selectedAnnotations.differences.length" 
                         type="error" 
                         class="mt-4"
                       >
                         <h4>Differences Found:</h4>
                         <ul>
-                          <li v-for="(diff, diffIndex) in currentAnnotations.differences" 
-                          :key="diffIndex">
+                          <li 
+                            v-for="(diff, diffIndex) in selectedAnnotations.differences" 
+                            :key="diffIndex"
+                          >
                             {{ diff.details }}
                           </li>
                         </ul>
                       </v-alert>
-                    </v-card-text>
-                  </v-card>
-                  <v-card v-else outlined>
-                    <v-card-text class="text-center grey--text">
-                      Select an example to view annotations
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -167,7 +217,6 @@
 <script lang="ts">
 import Vue from 'vue'
 import { mdiMagnify } from '@mdi/js'
-import AnnotationDiff from '~/components/example/AnnotationDiff.vue'
 import { AnnotationComparison, ComparisonResponse } from '~/domain/models/disagreement/disagreement'
 import { ExampleItem } from '~/domain/models/example/example'
 
@@ -185,10 +234,6 @@ interface SortOptionItem {
 }
 
 export default Vue.extend({
-  components: {
-    AnnotationDiff
-  },
-
   layout: 'project',
   middleware: ['check-auth', 'auth', 'setCurrentProject'],
   
@@ -213,8 +258,8 @@ export default Vue.extend({
         { text: 'ID (Ascending)', value: 'asc' },
         { text: 'ID (Descending)', value: 'desc' }
       ] as SortOptionItem[],
-      selectedExampleId: null as number | null,
-      mdiMagnify
+      selectedExample: null as ExampleItem | null,
+      mdiMagnify,
     }
   },
 
@@ -251,7 +296,7 @@ export default Vue.extend({
         this.examples = response.examples || [];
         
         if (this.examples.length > 0) {
-          this.selectedExampleId = this.processedExamples[0]?.id || null
+          this.selectedExample = this.processedExamples[0] || null
         }
       } else {
         this.error = 'Please select two members to compare'
@@ -275,100 +320,102 @@ export default Vue.extend({
     processedExamples(): ExampleItem[] {
       return this.examples
         .filter(example => {
-          // Search filter
           const matchesSearch = this.searchText 
             ? example.text.toLowerCase().includes(this.searchText.toLowerCase())
             : true
           
-          // Conflict filter
           const hasConflict = this.hasConflict(example.id)
           if (this.filterOption === 'conflict') return matchesSearch && hasConflict
           if (this.filterOption === 'noConflict') return matchesSearch && !hasConflict
           return matchesSearch
         })
         .sort((a, b) => {
-          // ID sorting
           return this.sortOrder === 'asc' ? a.id - b.id : b.id - a.id
         })
     },
 
-    currentExample(): ExampleItem | null {
-      return this.processedExamples.find(e => e.id === this.selectedExampleId) || null
-    },
-
-    currentAnnotations(): AnnotationComparison {
-      const exampleId = this.currentExample?.id
-      const comparison = this.comparisons.find(c => c.example.id === exampleId)
+    selectedAnnotations(): AnnotationComparison {
+      if (!this.selectedExample) {
+        return {
+          example: new ExampleItem(0, '', {}, null, 0, '', false, '', []),
+          member1: { annotations: [] },
+          member2: { annotations: [] },
+          differences: []
+        }
+      }
       
+      const comparison = this.comparisons.find(c => c.example.id === this.selectedExample?.id)
       return comparison || {
-        example: this.currentExample || new ExampleItem(
-          0, '', {}, null, 0, '', false, '', []
-        ),
+        example: this.selectedExample,
         member1: { annotations: [] },
         member2: { annotations: [] },
         differences: []
       }
-    }
-  },
+    },
 
-  watch: {
-    processedExamples(newVal) {
-      if (newVal.length === 0) {
-        this.selectedExampleId = null
-        return
-      }
-      if (!newVal.some((e: { id: number | null }) => e.id === this.selectedExampleId)) {
-        this.selectedExampleId = newVal[0]?.id || null
-      }
-    }
+    dynamicHeaders(): Array<{ text: string; value: string; width?: string }> {
+    return [
+      { text: 'ID', value: 'id', width: '100px' },
+      { text: 'Text', value: 'text' },
+      { 
+        text: this.member1Name || 'Member 1', 
+        value: 'member1_annotations',
+      },
+      { 
+        text: this.member2Name || 'Member 2', 
+        value: 'member2_annotations',
+      },
+      { text: 'Status', value: 'conflict_status', width: '120px' }
+    ]
+  }
   },
 
   methods: {
+    selectExample(example: ExampleItem) {
+      this.selectedExample = example
+    },
+
+    getComparison(exampleId: number): AnnotationComparison | null {
+      return this.comparisons.find(c => c.example.id === exampleId) || null
+    },
+
     hasConflict(exampleId: number): boolean {
       return this.comparisons.some(c => c.example.id === exampleId && c.differences.length > 0)
     },
 
-    truncateText(text: string, length: number): string {
-      return text.length > length ? text.substring(0, length) + '...' : text
+    getLabelColor(
+      annotation: any, 
+      exampleId: number, 
+      userType: 'member1' | 'member2'
+    ): string {
+      const comparison = this.getComparison(exampleId)
+      if (!comparison) return 'primary'
+      
+      const isDifferent = comparison.differences.some(diff => 
+        diff.label === annotation.label && 
+        (diff.type.includes(
+          userType === 'member1' ? 'missing_in_member2' : 'missing_in_member1'
+        ))
+      )
+      
+      if (isDifferent) {
+        return userType === 'member1' ? 'error' : 'success'
+      }
+      return 'primary'
     }
   }
 })
 </script>
 
 <style scoped>
-.highlight-conflict {
-  border-left: 4px solid #ff5252;
-  background-color: rgba(255, 82, 82, 0.1);
+.text-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
 }
 
-.v-list-item--active {
-  background-color: #e3f2fd;
-}
-
-/* Improved controls styling */
-.v-card__text.controls {
-  border-bottom: 1px solid #e0e0e0;
-}
-
-/* Better spacing for mobile */
-@media (max-width: 959px) {
-  .v-col {
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.v-data-table >>> tbody tr :hover {
+  cursor: pointer;
+  background-color: #f5f5f5;
 }
 </style>
