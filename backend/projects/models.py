@@ -29,6 +29,12 @@ class Perspective(models.Model):
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True, help_text="Descrição geral da perspectiva.")
     created_at = models.DateTimeField(default=timezone.now)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_perspectives"
+    )
 
     def __str__(self):
         return self.name

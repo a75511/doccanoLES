@@ -27,6 +27,7 @@ class PerspectiveListView(generics.ListCreateAPIView):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
+        context['request'] = self.request
         context['project_id'] = self.kwargs.get('project_id')
         return context
 
@@ -47,11 +48,12 @@ class CreatePerspectiveView(generics.CreateAPIView):
                 )
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            serializer.context['request'] = request
             perspective = serializer.save()
             
             return Response({
                 "message": "Perspective created successfully.",
-                "perspective": PerspectiveSerializer(perspective).data
+                "perspective": PerspectiveSerializer(perspective, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
             
         except DatabaseError:
@@ -78,9 +80,6 @@ class CreatePerspectiveView(generics.CreateAPIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
-    def get_queryset(self):
-        return Perspective.objects.all()
 
 
 class PerspectiveAttributeListOptionView(generics.ListCreateAPIView):

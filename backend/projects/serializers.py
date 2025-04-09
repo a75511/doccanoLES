@@ -81,14 +81,24 @@ class PerspectiveAttributeSerializer(serializers.ModelSerializer):
 
 class PerspectiveSerializer(serializers.ModelSerializer):
     attributes = PerspectiveAttributeSerializer(many=True)
+    created_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Perspective
-        fields = ["id", "name", "description", "attributes"]
+        fields = ["id", "name", "description", "attributes", "created_at", "created_by"]
+
+    @classmethod
+    def get_created_by(cls, instance):
+        if instance.created_by:
+            return instance.created_by.username
+        return None
 
     def create(self, validated_data):
         attributes_data = validated_data.pop("attributes", [])
-        perspective = Perspective.objects.create(**validated_data)
+        perspective = Perspective.objects.create(
+            **validated_data,
+            created_by=self.context['request'].user
+        )
 
         for attribute_data in attributes_data:
             options_data = attribute_data.pop("options", [])
