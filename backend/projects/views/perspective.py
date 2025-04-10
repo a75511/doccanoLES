@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db import DatabaseError, IntegrityError
 from projects.models import Perspective, Project, PerspectiveAttribute, PerspectiveAttributeListOption
-from projects.serializers import PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeListOptionSerializer
+from projects.serializers import PerspectiveAttributeSerializer, PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeListOptionSerializer
 
 class PerspectiveListView(generics.ListCreateAPIView):
     serializer_class = PerspectiveSerializer
@@ -30,6 +30,24 @@ class PerspectiveListView(generics.ListCreateAPIView):
         context['request'] = self.request
         context['project_id'] = self.kwargs.get('project_id')
         return context
+    
+class PerspectiveDetailView(generics.RetrieveAPIView):
+    queryset = Perspective.objects.all()
+    serializer_class = PerspectiveSerializer
+    lookup_url_kwarg = "perspective_id"
+    permission_classes = [IsAuthenticated]
+
+class PerspectiveAttributeListView(generics.ListAPIView):
+    serializer_class = PerspectiveAttributeSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
+    ordering_fields = ['name', 'type']
+    ordering = ['name']
+
+    def get_queryset(self):
+        perspective_id = self.kwargs['perspective_id']
+        return PerspectiveAttribute.objects.filter(perspective_id=perspective_id)
+    
 
 class CreatePerspectiveView(generics.CreateAPIView):
     serializer_class = PerspectiveSerializer

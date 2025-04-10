@@ -1,7 +1,7 @@
 import { Page } from '@/domain/models/page'
 import { PerspectiveItem } from '@/domain/models/perspective/perspective'
 import ApiService from '@/services/api.service'
-import { PerspectiveAttributeItem } from '@/domain/models/perspective/perspectiveAttribute'
+import { PerspectiveAttributeItem, PerspectiveAttributeListOptionItem } from '@/domain/models/perspective/perspectiveAttribute'
 import { Project } from '@/domain/models/project/project'
 
 const sortableFieldList = ['name', 'createdAt'] as const
@@ -38,12 +38,21 @@ function toModel(item: { [key: string]: any }): PerspectiveItem {
         attr.type,
         attr.options ? attr.options.map((option: any) => option.value) : []
       )
-    )
+    ),
+    item.created_at,
+    item.created_by
   )
 }
 
 export class APIPerspectiveRepository {
   constructor(private readonly request = ApiService) {}
+
+  async findById(projectId: string, perspectiveId: number): Promise<PerspectiveItem> {
+    const url = `/projects/${projectId}/perspectives/${perspectiveId}`;
+    const response = await this.request.get(url);
+    console.log(response.data)
+    return toModel(response.data);
+  }
 
   async list(projectId: string, query: SearchQuery): Promise<Page<PerspectiveItem>> {
     const fieldMapper = {
@@ -61,6 +70,36 @@ export class APIPerspectiveRepository {
       response.data.results.map((perspective: any) => toModel(perspective))
     )
   }
+
+async listAttributes(projectId: string, perspectiveId: number, query: SearchQuery):
+ Promise<Page<PerspectiveAttributeItem>> {
+  const fieldMapper = {
+    name: 'name',
+    type: 'type',
+  };
+  const sortBy = fieldMapper[query.sortBy as keyof typeof fieldMapper] || 'name';
+  const ordering = query.sortDesc ? `-${sortBy}` : `${sortBy}`;
+  
+  const url = `/projects/${projectId}/perspectives/${perspectiveId}/attributes?limit=${query.limit}&offset=${query.offset}&q=${query.q}&ordering=${ordering}`;
+  const response = await this.request.get(url);
+  
+  return new Page(
+    response.data.count,
+    response.data.next,
+    response.data.previous,
+    response.data.results.map((attr: any) => 
+      new PerspectiveAttributeItem(
+        attr.id,
+        attr.perspective_id,
+        attr.name,
+        attr.type,
+        attr.options.map((option: any) => 
+          new PerspectiveAttributeListOptionItem(option.id, attr.id, option.value)
+        ) || [],
+      )
+    )
+  );
+}
 
   async assignToProject(projectId: string, perspectiveId: number):
    Promise<{ data: { project: Project } }> {

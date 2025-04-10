@@ -2,6 +2,7 @@ import { Page } from '@/domain/models/page'
 import { PerspectiveItem } from '@/domain/models/perspective/perspective'
 import { Project } from '@/domain/models/project/project'
 import { APIPerspectiveRepository, SearchQuery } from '@/repositories/perspective/apiPerspectiveRepository'
+import { PerspectiveAttributeItem } from '~/domain/models/perspective/perspectiveAttribute'
 
 export interface SearchQueryData {
   limit: string
@@ -14,6 +15,14 @@ export interface SearchQueryData {
 export class PerspectiveApplicationService {
   constructor(private readonly repository: APIPerspectiveRepository) {}
 
+  public async findById(projectId: string, perspectiveId: number): Promise<PerspectiveItem> {
+    try {
+      return await this.repository.findById(projectId, perspectiveId);
+    } catch (e: any) {
+      throw new Error(e.response?.data?.detail || 'Failed to fetch perspective details.');
+    }
+  }
+
   public async list(projectId: string, query: SearchQueryData): Promise<Page<PerspectiveItem>> {
     try {
       const searchQuery = 
@@ -21,6 +30,20 @@ export class PerspectiveApplicationService {
       return await this.repository.list(projectId, searchQuery)
     } catch (e: any) {
       throw new Error(e.response?.data?.detail || 'Failed to fetch perspectives.')
+    }
+  }
+
+  public async listAttributes(
+    projectId: string,
+    perspectiveId: number,
+    query: SearchQueryData
+  ): Promise<Page<PerspectiveAttributeItem>> {
+    try {
+      const searchQuery = 
+      new SearchQuery(query.limit, query.offset, query.q, query.sortBy, query.sortDesc);
+      return await this.repository.listAttributes(projectId, perspectiveId, searchQuery);
+    } catch (e: any) {
+      throw new Error(e.response?.data?.detail || 'Failed to fetch attributes.');
     }
   }
 

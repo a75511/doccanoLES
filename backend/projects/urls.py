@@ -3,7 +3,7 @@ from django.urls import path
 from .views.member import MemberDetail, MemberList, MyRole
 from .views.project import CloneProject, ProjectDetail, ProjectList
 from .views.tag import TagDetail, TagList
-from .views.perspective import PerspectiveListView, CreatePerspectiveView, AssignPerspectiveToProject
+from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject
 
 urlpatterns = [
     path(route="projects", view=ProjectList.as_view(), name="project_list"),
@@ -15,6 +15,8 @@ urlpatterns = [
     path(route="projects/<int:project_id>/clone", view=CloneProject.as_view(), name="clone_project"),
     path(route="projects/<int:project_id>/members/<int:member_id>", view=MemberDetail.as_view(), name="member_detail"),
     path("projects/<int:project_id>/perspectives", PerspectiveListView.as_view(), name="perspective_list"),
+    path("projects/<int:project_id>/perspectives/<int:perspective_id>", PerspectiveDetailView.as_view(), name="perspective_detail"),
+    path("projects/<int:project_id>/perspectives/<int:perspective_id>/attributes", PerspectiveAttributeListView.as_view(), name="perspective_attributes"),
     path("projects/<int:project_id>/perspectives/create", CreatePerspectiveView.as_view(), name="create_perspective"),
     path("projects/<int:project_id>/assign-perspective/<int:perspective_id>", AssignPerspectiveToProject.as_view(), name="assign_perspective"),
 ]

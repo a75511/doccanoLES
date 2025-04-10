@@ -40,8 +40,8 @@
           </span>
         </nuxt-link>
       </template>
-      <template #[`item.description`]="{ item }">
-        <span>{{ item.description }}</span>
+      <template #[`item.createdBy`]="{ item }">
+        <span>{{ item.createdBy }}</span>
       </template>
     </v-data-table>
   </div>
@@ -95,7 +95,7 @@ export default Vue.extend({
     headers() {
       return [
         { text: this.$t('generic.name'), value: 'name', sortable: true },
-        { text: this.$t('generic.description'), value: 'description', sortable: false },
+        { text: this.$t('perspectives.createdBy'), value: 'createdBy', sortable: false },
         { text: this.$t('generic.actions'), value: 'actions', sortable: false }
       ]
     },
@@ -107,7 +107,7 @@ export default Vue.extend({
       return this.items
         .map(item => ({
           ...item,
-          isAssigned: item.id === assignedPerspectiveId
+          isAssigned: item.id === assignedPerspectiveId,
         }))
         .sort((a, b) => {
           // Always keep assigned item at the top
@@ -159,8 +159,8 @@ export default Vue.extend({
   },
 
   methods: {
-    perspectiveDetailLink(id: number): string {
-      return `/projects/${this.$route.params.id}/perspectives/${id}`;
+    perspectiveDetailLink(perspectiveId: number): string {
+      return this.localePath(`/projects/${this.$route.params.id}/perspectives/${perspectiveId}/attributes`)
     },
 
     updateQuery(payload: any) {

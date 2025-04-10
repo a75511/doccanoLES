@@ -87,12 +87,9 @@ class PerspectiveSerializer(serializers.ModelSerializer):
         model = Perspective
         fields = ["id", "name", "description", "attributes", "created_at", "created_by"]
 
-    @classmethod
-    def get_created_by(cls, instance):
-        if instance.created_by:
-            return instance.created_by.username
-        return None
-
+    def get_created_by(self, obj):
+        return obj.created_by.username if obj.created_by else None
+    
     def create(self, validated_data):
         attributes_data = validated_data.pop("attributes", [])
         perspective = Perspective.objects.create(

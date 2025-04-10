@@ -8,5 +8,6 @@ export default {
     attributes: 'Attributes',
     add_attribute: 'Add attribute',
     add_option: 'Add option',
+    createdBy: "Created By",
   }
   

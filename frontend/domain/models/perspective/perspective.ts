@@ -7,6 +7,7 @@ export class PerspectiveItem {
     readonly description: string,
     readonly attributes: PerspectiveAttributeItem[] = [],
     readonly createdAt: string = '',
+    readonly createdBy: string = '' 
   ) {}
 
   static create(
@@ -14,7 +15,9 @@ export class PerspectiveItem {
     name: string,
     description: string,
     attributes: PerspectiveAttributeItem[],
+    createdAt: string = '',
+    createdBy: string = ''
   ): PerspectiveItem {
-    return new PerspectiveItem(id, name, description, attributes);
+    return new PerspectiveItem(id, name, description, attributes, createdAt, createdBy);
   }
 }
