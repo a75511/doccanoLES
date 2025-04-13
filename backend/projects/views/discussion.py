@@ -21,7 +21,7 @@ class CommentListCreate(generics.ListCreateAPIView):
 
     def get_queryset(self):
         discussion = get_object_or_404(Discussion, project_id=self.kwargs['project_id'], is_active=True)
-        return DiscussionComment.objects.filter(discussion=discussion)
+        return DiscussionComment.objects.filter(discussion=discussion).order_by('-created_at')
 
     def perform_create(self, serializer):
         discussion = get_object_or_404(Discussion, project_id=self.kwargs['project_id'], is_active=True)

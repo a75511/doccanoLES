@@ -218,6 +218,7 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
 
 class DiscussionCommentSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
+    discussion = serializers.PrimaryKeyRelatedField(read_only=True)
     
     def get_username(self, obj):
         return obj.member.user.username
@@ -225,7 +226,7 @@ class DiscussionCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscussionComment
         fields = ['id', 'discussion', 'text', 'member', 'username', 'created_at', 'updated_at']
-        read_only_fields = ['member', 'created_at', 'updated_at']
+        read_only_fields = ['member', 'created_at', 'updated_at', 'discussion']
 
 class DiscussionSerializer(serializers.ModelSerializer):
     comments = DiscussionCommentSerializer(many=True, read_only=True)
