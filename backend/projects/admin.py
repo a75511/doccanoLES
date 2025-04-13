@@ -14,6 +14,8 @@ from .models import (
     Perspective,
     PerspectiveAttribute,
     PerspectiveAttributeListOption,
+    Discussion,
+    DiscussionComment,
 )
 
 
@@ -59,6 +61,20 @@ class PerspectiveAttributeListOptionAdmin(admin.ModelAdmin):
     list_display = ("attribute", "value")
     search_fields = ("attribute__name", "value")
 
+class DiscussionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'project', 'title', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('title', 'description', 'project__name')
+    raw_id_fields = ('project',)
+    ordering = ('-created_at',)
+
+class DiscussionCommentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'discussion', 'member', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('text', 'member__user__username', 'discussion__title')
+    raw_id_fields = ('discussion', 'member')
+    ordering = ('-created_at',)
+
 
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Project, ProjectAdmin)
@@ -73,3 +89,5 @@ admin.site.register(Tag, TagAdmin)
 admin.site.register(Perspective, PerspectiveAdmin)
 admin.site.register(PerspectiveAttribute, PerspectiveAttributeAdmin)
 admin.site.register(PerspectiveAttributeListOption, PerspectiveAttributeListOptionAdmin)
+admin.site.register(Discussion, DiscussionAdmin)
+admin.site.register(DiscussionComment, DiscussionCommentAdmin)

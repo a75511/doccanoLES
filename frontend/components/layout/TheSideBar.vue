@@ -40,7 +40,8 @@ import {
   mdiLabel,
   mdiPlayCircleOutline,
   mdiEyeSettings,
-  mdiSetLeft
+  mdiSetLeft,
+  mdiForum
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -147,7 +148,13 @@ export default {
           text: "Disagreements",
           link: 'disagreements',
           isVisible: (this.isProjectAdmin || this.isApprover) && this.project.projectType !== 'text'
-        }
+        },
+        {
+          icon: mdiForum,
+          text: 'Discussions',
+          link: 'discussions',
+          isVisible: this.isProjectAdmin || this.isApprover
+        },
       ]
       return items.filter((item) => item.isVisible)
     }

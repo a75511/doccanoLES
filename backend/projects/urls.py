@@ -4,6 +4,7 @@ from .views.member import MemberDetail, MemberList, MyRole
 from .views.project import CloneProject, ProjectDetail, ProjectList
 from .views.tag import TagDetail, TagList
 from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject
+from .views.discussion import ActiveDiscussionDetail, CommentListCreate
 
 urlpatterns = [
     path(route="projects", view=ProjectList.as_view(), name="project_list"),
@@ -19,4 +20,6 @@ urlpatterns = [
     path("projects/<int:project_id>/perspectives/<int:perspective_id>/attributes", PerspectiveAttributeListView.as_view(), name="perspective_attributes"),
     path("projects/<int:project_id>/perspectives/create", CreatePerspectiveView.as_view(), name="create_perspective"),
     path("projects/<int:project_id>/assign-perspective/<int:perspective_id>", AssignPerspectiveToProject.as_view(), name="assign_perspective"),
+    path('projects/<int:project_id>/discussion', ActiveDiscussionDetail.as_view(), name='active_discussion'),
+    path('projects/<int:project_id>/discussion/comments', CommentListCreate.as_view(), name='discussion_comments'),
 ]

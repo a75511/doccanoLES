@@ -285,3 +285,30 @@ class Member(models.Model):
 
     class Meta:
         unique_together = ("user", "project")
+
+class Discussion(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='discussions')
+    title = models.CharField(max_length=255, default="Annotation Guidelines Discussion")
+    description = models.TextField(default="Discuss annotation guidelines and resolve disagreements")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_active_discussion'
+            )
+        ]
+
+class DiscussionComment(models.Model):
+    discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE, related_name='comments')
+    member = models.ForeignKey(Member, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']

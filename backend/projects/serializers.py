@@ -18,6 +18,8 @@ from .models import (
     PerspectiveAttribute,
     PerspectiveAttributeListOption,
     AttributeType,
+    Discussion,
+    DiscussionComment,
 )
 
 
@@ -212,3 +214,24 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
         Project: ProjectSerializer,
         **{cls.Meta.model: cls for cls in ProjectSerializer.__subclasses__()},
     }
+
+
+class DiscussionCommentSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    
+    def get_username(self, obj):
+        return obj.member.user.username
+
+    class Meta:
+        model = DiscussionComment
+        fields = ['id', 'discussion', 'text', 'member', 'username', 'created_at', 'updated_at']
+        read_only_fields = ['member', 'created_at', 'updated_at']
+
+class DiscussionSerializer(serializers.ModelSerializer):
+    comments = DiscussionCommentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Discussion
+        fields = ['id', 'project', 'title', 'description', 'is_active',
+                 'created_at', 'updated_at', 'comments']
+        read_only_fields = ['project', 'is_active']
