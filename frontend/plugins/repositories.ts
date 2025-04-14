@@ -25,8 +25,7 @@ import { APIParseRepository } from '@/repositories/upload/apiParseRepository'
 import { APIUserRepository } from '@/repositories/user/apiUserRepository'
 import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationRepository'
 import { APIPerspectiveRepository } from '~/repositories/perspective/apiPerspectiveRepository'
-import { APIAnalysisRepository } from '~/repositories/analysis/apiAnalysisRepository'
-import { APIDisagreementRepository } from '~/repositories/disagreement/apiDisagreementRepository'
+import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories/disagreement/apiDisagreementRepository'
 import { APIDiscussionRepository } from '~/repositories/discussion/apiDiscussionRepository'
 
 export interface Repositories {

@@ -88,6 +88,7 @@ class Project(PolymorphicModel):
         blank=True,
         related_name="projects"
     )
+    locked = models.BooleanField(default=False)
 
     def add_admin(self):
         admin_role = Role.objects.get(name=settings.ROLE_PROJECT_ADMIN)

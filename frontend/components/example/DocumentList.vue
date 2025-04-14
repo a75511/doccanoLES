@@ -70,7 +70,9 @@
       <v-btn class="me-1" small color="primary text-capitalize" @click="$emit('edit', item)"
         >Edit</v-btn
       >
-      <v-btn small color="primary text-capitalize" @click="toLabeling(item)">
+      <v-btn small color="primary text-capitalize" @click="toLabeling(item)" 
+      :disabled="project.locked">
+        
         {{ $t('dataset.annotate') }}
       </v-btn>
     </template>
@@ -79,6 +81,7 @@
 
 <script lang="ts">
 import { mdiMagnify } from '@mdi/js'
+import { mapGetters } from 'vuex'
 import type { PropType } from 'vue'
 import Vue from 'vue'
 import { DataOptions } from 'vuetify/types'
@@ -127,6 +130,8 @@ export default Vue.extend({
   },
 
   computed: {
+    ...mapGetters('projects', ['project']),
+
     headers() {
       const headers = [
         {

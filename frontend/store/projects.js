@@ -3,6 +3,7 @@ export const state = () => ({
     id: '',
     name: '',
     perspective: null,
+    locked: false,
   }
 })
 

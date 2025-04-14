@@ -65,3 +65,27 @@ class CloneProject(views.APIView):
         cloned_project = project.clone()
         serializer = ProjectPolymorphicSerializer(cloned_project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+class ProjectLockView(views.APIView):
+    permission_classes = [IsAuthenticated & IsProjectAdmin]
+
+    def post(self, request, *args, **kwargs):
+        project = get_object_or_404(Project, pk=kwargs["project_id"])
+        lock_status = request.data.get('locked')
+        
+        if lock_status is None:
+            return Response(
+                {"detail": "'locked' field is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not isinstance(lock_status, bool):
+            return Response(
+                {"detail": "'locked' must be a boolean."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        project.locked = lock_status
+        project.save()
+        
+        return Response({"locked": project.locked})

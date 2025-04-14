@@ -142,6 +142,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "is_text_project",
             "tags",
             "perspective",
+            "locked",
         ]
         read_only_fields = (
             "created_at",

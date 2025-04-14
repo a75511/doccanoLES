@@ -1,4 +1,3 @@
-<!-- components/analysis/DisagreementAnalysis.vue -->
 <template>
     <v-card>
       <v-card-title class="d-flex align-center">

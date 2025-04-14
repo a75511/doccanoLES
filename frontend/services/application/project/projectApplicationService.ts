@@ -129,4 +129,28 @@ export class ProjectApplicationService {
       throw new Error(e.response.data.detail)
     }
   }
+
+  public async lock(projectId: number): Promise<void> {
+    try {
+      await this.repository.lock(projectId)
+    } catch (e: any) {
+      throw new Error(e.response.data.detail)
+    }
+  }
+  
+  public async unlock(projectId: number): Promise<void> {
+    try {
+      await this.repository.unlock(projectId)
+    } catch (e: any) {
+      throw new Error(e.response.data.detail)
+    }
+  }
+  
+  public async getLockStatus(projectId: number): Promise<boolean> {
+    try {
+      return await this.repository.getLockStatus(projectId)
+    } catch (e: any) {
+      throw new Error(e.response.data.detail)
+    }
+  }
 }

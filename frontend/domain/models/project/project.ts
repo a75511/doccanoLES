@@ -56,6 +56,7 @@ export class Project {
   name: string
   description: string
   projectType: ProjectType
+  readonly locked: boolean
   constructor(
     readonly id: number,
     readonly _name: string,
@@ -75,7 +76,8 @@ export class Project {
     readonly updatedAt: string = '',
     readonly author: string = '',
     readonly isTextProject: boolean = false,
-    readonly perspective: PerspectiveItem | null = null
+    readonly perspective: PerspectiveItem | null = null,
+    readonly _locked: boolean = false
   ) {
     if (!validateMinLength(_name)) {
       throw new Error('Project name is required')
@@ -92,6 +94,7 @@ export class Project {
     this.name = _name.trim()
     this.description = _description.trim()
     this.projectType = _projectType as ProjectType
+    this.locked = _locked
   }
 
   static create(
@@ -108,7 +111,8 @@ export class Project {
     useRelation: boolean,
     tags: TagItem[],
     allowMemberToCreateLabelType: boolean,
-    perspective: PerspectiveItem | null = null 
+    perspective: PerspectiveItem | null = null,
+    locked: boolean = false
   ) {
     return new Project(
       id,
@@ -130,6 +134,7 @@ export class Project {
       '', // author
       false, // isTextProject
       perspective,
+      locked // locked
     )
   }
 

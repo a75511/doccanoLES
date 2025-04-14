@@ -44,7 +44,8 @@ function toModel(item: { [key: string]: any }): Project {
     item.updated_at,
     item.author,
     item.is_text_project,
-    item.perspective
+    item.perspective,
+    item.locked,
   )
 }
 
@@ -117,5 +118,21 @@ export class APIProjectRepository {
     const url = `/projects/${project.id}/clone`
     const response = await this.request.post(url)
     return toModel(response.data)
+  }
+
+  async lock(projectId: number): Promise<void> {
+    const url = `/projects/${projectId}/lock`
+    await this.request.post(url, { locked: true })
+  }
+  
+  async unlock(projectId: number): Promise<void> {
+    const url = `/projects/${projectId}/lock`
+    await this.request.post(url, { locked: false })
+  }
+  
+  async getLockStatus(projectId: number): Promise<boolean> {
+    const url = `/projects/${projectId}`
+    const response = await this.request.get(url)
+    return response.data.locked
   }
 }

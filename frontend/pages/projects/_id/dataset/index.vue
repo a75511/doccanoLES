@@ -2,15 +2,18 @@
   <v-card>
     <v-card-title v-if="isProjectAdmin">
       <action-menu
+        :is-locked="project.locked"
         @upload="$router.push('dataset/import')"
         @download="$router.push('dataset/export')"
         @assign="dialogAssignment = true"
         @reset="dialogReset = true"
         @conflicts="dialogConflicts = true"
+        @lock="lockProject"
+        @unlock="unlockProject"
       />
       <v-btn
         class="text-capitalize ms-2"
-        :disabled="!canDelete"
+        :disabled="!canDelete || project.locked"
         outlined
         @click.stop="dialogDelete = true"
       >
@@ -18,7 +21,7 @@
       </v-btn>
       <v-spacer />
       <v-btn
-        :disabled="!item.count"
+        :disabled="!item.count || project.locked"
         class="text-capitalize"
         color="error"
         @click="dialogDeleteAll = true"
@@ -253,7 +256,27 @@ export default Vue.extend({
           member2: member2Id.toString()
         }
       }))
-    }
+    },
+
+    async lockProject() {
+  try {
+    await this.$services.project.lock(parseInt(this.projectId))
+    // Refresh the project data after locking
+    await this.$store.dispatch('projects/setCurrentProject', this.projectId)
+  } catch (error) {
+    console.error('Failed to lock project:', error)
+  }
+},
+
+async unlockProject() {
+  try {
+    await this.$services.project.unlock(parseInt(this.projectId))
+    // Refresh the project data after unlocking
+    await this.$store.dispatch('projects/setCurrentProject', this.projectId)
+  } catch (error) {
+    console.error('Failed to unlock project:', error)
+  }
+}
   }
 })
 </script>

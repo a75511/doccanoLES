@@ -10,8 +10,7 @@ import { SegmentationApplicationService } from '@/services/application/tasks/seg
 import { SequenceLabelingApplicationService } from '@/services/application/tasks/sequenceLabeling/sequenceLabelingApplicationService'
 import { UserApplicationService } from '~/services/application/user/userApplicationService'
 import { PerspectiveApplicationService } from '~/services/application/perspective/perspectiveApplicationService'
-import { AnalysisApplicationService } from '~/services/application/example/disagreementApplicationService'
-import { DisagreementApplicationService } from '~/services/application/disagreement/disagreementApplicationService'
+import { DisagreementApplicationService, AnalysisApplicationService } from '~/services/application/disagreement/disagreementApplicationService'
 import { DiscussionApplicationService } from '~/services/application/discussion/discussionApplicationService'
 
 export interface Services {

@@ -1,5 +1,6 @@
-import { APIDisagreementRepository } from '~/repositories/disagreement/apiDisagreementRepository'
-import { ComparisonResponse } from '~/domain/models/disagreement/disagreement'
+import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories/disagreement/apiDisagreementRepository'
+import { ComparisonResponse, DisagreementAnalysisSummary } from '~/domain/models/disagreement/disagreement'
+import { SearchQueryData } from '~/services/application/project/projectApplicationService'
 
 export class DisagreementApplicationService {
   constructor(private readonly repository: APIDisagreementRepository) {}
@@ -22,6 +23,26 @@ export class DisagreementApplicationService {
         throw e // Let the middleware handle database errors
       }
       throw new Error(e.response?.data?.detail || 'Failed to compare annotations.')
+    }
+  }
+}
+
+export class AnalysisApplicationService {
+  constructor(private readonly repository: APIAnalysisRepository) {}
+
+  public async getDisagreementAnalysis(
+    projectId: string,
+    threshold: number,
+    query?: SearchQueryData
+  ): Promise<DisagreementAnalysisSummary> {
+    try {
+      return await this.repository.listDisagreements(
+        projectId, 
+        query || { limit: '100', offset: '0' },
+        threshold
+      );
+    } catch (error: any) {
+      throw new Error(error.message);
     }
   }
 }
