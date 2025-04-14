@@ -15,7 +15,7 @@
 
           <v-card-text class="py-2 px-4 grey lighten-4">
             <v-row align="center" no-gutters>
-              <v-col cols="12" md="4">
+              <v-col cols="12" md="8">
                 <v-text-field
                   v-model="searchText"
                   :prepend-inner-icon="mdiMagnify"
@@ -28,22 +28,11 @@
                 />
               </v-col>
               
-              <v-col cols="12" md="4" class="px-md-2">
+              <v-col cols="12" md="4" class="pl-md-2">
                 <v-select
                   v-model="filterOption"
                   :items="filterOptions"
                   label="Filter by"
-                  outlined
-                  dense
-                  hide-details
-                />
-              </v-col>
-              
-              <v-col cols="12" md="4">
-                <v-select
-                  v-model="sortOrder"
-                  :items="sortOptions"
-                  label="Sort by"
                   outlined
                   dense
                   hide-details
@@ -68,14 +57,7 @@
                     :search="searchText"
                     :items-per-page="10"
                     class="elevation-1"
-                    @click:row="selectExample"
                   >
-                    <template #[`item.id`]="{ item }">
-                      <v-chip small>
-                        #{{ item.id }}
-                      </v-chip>
-                    </template>
-
                     <template #[`item.text`]="{ item }">
                       <div class="text-truncate" style="max-width: 300px">
                         {{ item.text }}
@@ -88,7 +70,7 @@
                           v-for="(annotation, idx) in getComparison(item.id)?.member1.annotations"
                           :key="idx"
                           small
-                          :color="getLabelColor(annotation, item.id, 'member1')"
+                          color="primary"
                           class="mr-1 mb-1"
                         >
                           {{ annotation.label }}
@@ -102,7 +84,7 @@
                           v-for="(annotation, idx) in getComparison(item.id)?.member2.annotations"
                           :key="idx"
                           small
-                          :color="getLabelColor(annotation, item.id, 'member2')"
+                          color="primary"
                           class="mr-1 mb-1"
                         >
                           {{ annotation.label }}
@@ -122,90 +104,6 @@
                   </v-data-table>
                 </v-col>
               </v-row>
-
-              <v-row v-if="selectedExample" class="mt-4">
-                <v-col cols="12">
-                  <v-card outlined>
-                    <v-card-title class="subtitle-1">
-                      Detailed View for Example #{{ selectedExample.id }}
-                    </v-card-title>
-                    <v-card-text>
-                      <v-row>
-                        <v-col cols="12" md="6">
-                          <h3 class="mb-2">
-                            {{ member1Name }}'s Annotations
-                            <v-chip small color="primary" class="ml-2">
-                              {{ selectedAnnotations.member1.annotations.length }} labels
-                            </v-chip>
-                          </h3>
-                          <v-card outlined>
-                            <v-card-text>
-                              <div class="text-content">
-                                {{ selectedExample.text }}
-                              </div>
-                              <div class="mt-3">
-                                <v-chip
-                                  v-for="(annotation, idx) 
-                                  in selectedAnnotations.member1.annotations"
-                                  :key="`m1-${idx}`"
-                                  small
-                                  :color="getLabelColor(annotation, selectedExample.id, 'member1')"
-                                  class="mr-1 mb-1"
-                                >
-                                  {{ annotation.label }}
-                                </v-chip>
-                              </div>
-                            </v-card-text>
-                          </v-card>
-                        </v-col>
-                        <v-col cols="12" md="6">
-                          <h3 class="mb-2">
-                            {{ member2Name }}'s Annotations
-                            <v-chip small color="primary" class="ml-2">
-                              {{ selectedAnnotations.member2.annotations.length }} labels
-                            </v-chip>
-                          </h3>
-                          <v-card outlined>
-                            <v-card-text>
-                              <div class="text-content">
-                                {{ selectedExample.text }}
-                              </div>
-                              <div class="mt-3">
-                                <v-chip
-                                  v-for="(annotation, idx) 
-                                  in selectedAnnotations.member2.annotations"
-                                  :key="`m2-${idx}`"
-                                  small
-                                  :color="getLabelColor(annotation, selectedExample.id, 'member2')"
-                                  class="mr-1 mb-1"
-                                >
-                                  {{ annotation.label }}
-                                </v-chip>
-                              </div>
-                            </v-card-text>
-                          </v-card>
-                        </v-col>
-                      </v-row>
-
-                      <v-alert 
-                        v-if="selectedAnnotations.differences.length" 
-                        type="error" 
-                        class="mt-4"
-                      >
-                        <h4>Differences Found:</h4>
-                        <ul>
-                          <li 
-                            v-for="(diff, diffIndex) in selectedAnnotations.differences" 
-                            :key="diffIndex"
-                          >
-                            {{ diff.details }}
-                          </li>
-                        </ul>
-                      </v-alert>
-                    </v-card-text>
-                  </v-card>
-                </v-col>
-              </v-row>
             </template>
           </v-card-text>
         </v-card>
@@ -221,16 +119,10 @@ import { AnnotationComparison, ComparisonResponse } from '~/domain/models/disagr
 import { ExampleItem } from '~/domain/models/example/example'
 
 type FilterOption = 'all' | 'conflict' | 'noConflict'
-type SortOrder = 'asc' | 'desc'
 
 interface FilterOptionItem {
   text: string
   value: FilterOption
-}
-
-interface SortOptionItem {
-  text: string
-  value: SortOrder
 }
 
 export default Vue.extend({
@@ -248,17 +140,11 @@ export default Vue.extend({
       error: null as string | null,
       searchText: '',
       filterOption: 'all' as FilterOption,
-      sortOrder: 'asc' as SortOrder,
       filterOptions: [
         { text: 'All Annotations', value: 'all' },
         { text: 'With Conflicts Only', value: 'conflict' },
         { text: 'Without Conflicts', value: 'noConflict' }
       ] as FilterOptionItem[],
-      sortOptions: [
-        { text: 'ID (Ascending)', value: 'asc' },
-        { text: 'ID (Descending)', value: 'desc' }
-      ] as SortOptionItem[],
-      selectedExample: null as ExampleItem | null,
       mdiMagnify,
     }
   },
@@ -294,10 +180,6 @@ export default Vue.extend({
 
         this.comparisons = response.conflicts;
         this.examples = response.examples || [];
-        
-        if (this.examples.length > 0) {
-          this.selectedExample = this.processedExamples[0] || null
-        }
       } else {
         this.error = 'Please select two members to compare'
       }
@@ -329,79 +211,41 @@ export default Vue.extend({
           if (this.filterOption === 'noConflict') return matchesSearch && !hasConflict
           return matchesSearch
         })
-        .sort((a, b) => {
-          return this.sortOrder === 'asc' ? a.id - b.id : b.id - a.id
-        })
     },
 
-    selectedAnnotations(): AnnotationComparison {
-      if (!this.selectedExample) {
-        return {
-          example: new ExampleItem(0, '', {}, null, 0, '', false, '', []),
-          member1: { annotations: [] },
-          member2: { annotations: [] },
-          differences: []
+    dynamicHeaders(): Array<{ text: string; value: string; sortable: boolean }> {
+      return [
+        { 
+          text: 'Text', 
+          value: 'text',
+          sortable: true 
+        },
+        { 
+          text: this.member1Name || 'Member 1', 
+          value: 'member1_annotations',
+          sortable: false 
+        },
+        { 
+          text: this.member2Name || 'Member 2', 
+          value: 'member2_annotations',
+          sortable: false 
+        },
+        { 
+          text: 'Status', 
+          value: 'conflict_status', 
+          sortable: false
         }
-      }
-      
-      const comparison = this.comparisons.find(c => c.example.id === this.selectedExample?.id)
-      return comparison || {
-        example: this.selectedExample,
-        member1: { annotations: [] },
-        member2: { annotations: [] },
-        differences: []
-      }
-    },
-
-    dynamicHeaders(): Array<{ text: string; value: string; width?: string }> {
-    return [
-      { text: 'ID', value: 'id', width: '100px' },
-      { text: 'Text', value: 'text' },
-      { 
-        text: this.member1Name || 'Member 1', 
-        value: 'member1_annotations',
-      },
-      { 
-        text: this.member2Name || 'Member 2', 
-        value: 'member2_annotations',
-      },
-      { text: 'Status', value: 'conflict_status', width: '120px' }
-    ]
-  }
+      ]
+    }
   },
 
   methods: {
-    selectExample(example: ExampleItem) {
-      this.selectedExample = example
-    },
-
     getComparison(exampleId: number): AnnotationComparison | null {
       return this.comparisons.find(c => c.example.id === exampleId) || null
     },
 
     hasConflict(exampleId: number): boolean {
-      return this.comparisons.some(c => c.example.id === exampleId && c.differences.length > 0)
-    },
-
-    getLabelColor(
-      annotation: any, 
-      exampleId: number, 
-      userType: 'member1' | 'member2'
-    ): string {
-      const comparison = this.getComparison(exampleId)
-      if (!comparison) return 'primary'
-      
-      const isDifferent = comparison.differences.some(diff => 
-        diff.label === annotation.label && 
-        (diff.type.includes(
-          userType === 'member1' ? 'missing_in_member2' : 'missing_in_member1'
-        ))
-      )
-      
-      if (isDifferent) {
-        return userType === 'member1' ? 'error' : 'success'
-      }
-      return 'primary'
+      return this.comparisons.some(c => c.example.id === exampleId && c.hasConflict)
     }
   }
 })
@@ -412,10 +256,5 @@ export default Vue.extend({
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.6;
-}
-
-.v-data-table >>> tbody tr :hover {
-  cursor: pointer;
-  background-color: #f5f5f5;
 }
 </style>
