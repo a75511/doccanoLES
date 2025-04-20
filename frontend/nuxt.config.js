@@ -48,7 +48,9 @@ export default {
     '~/plugins/services.ts',
     '~/plugins/repositories.ts',
     '~/plugins/color.ts',
-    '~/plugins/role.ts'
+    '~/plugins/role.ts',
+    '~/plugins/charts.js',
+    '~/plugins/export.js',
   ],
   /*
    ** Nuxt.js modules
@@ -153,6 +155,7 @@ export default {
      ** You can extend webpack config here
      */
     publicPath: process.env.PUBLIC_PATH || '/_nuxt/',
+    transpile: ['chart.js'],
     extend(config, _) {
       // config.module.rules.push({
       //   test: /\.(txt|csv|conll|jsonl)$/i,

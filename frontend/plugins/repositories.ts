@@ -27,6 +27,7 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 import { APIPerspectiveRepository } from '~/repositories/perspective/apiPerspectiveRepository'
 import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories/disagreement/apiDisagreementRepository'
 import { APIDiscussionRepository } from '~/repositories/discussion/apiDiscussionRepository'
+import { APIReportingRepository } from '~/repositories/reporting/apiReportingRepository'
 
 export interface Repositories {
   // User
@@ -40,6 +41,7 @@ export interface Repositories {
   tag: APITagRepository
   perspective: APIPerspectiveRepository
   discussion: APIDiscussionRepository
+  reporting: APIReportingRepository
 
 
   // Example
@@ -96,6 +98,7 @@ const repositories: Repositories = {
   tag: new APITagRepository(),
   perspective: new APIPerspectiveRepository(),
   discussion: new APIDiscussionRepository(),
+  reporting: new APIReportingRepository(),
 
   // Example
   example: new APIExampleRepository(),

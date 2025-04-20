@@ -14,6 +14,7 @@ from .models import (
     Perspective,
     PerspectiveAttribute,
     PerspectiveAttributeListOption,
+    MemberAttributeDescription,
     Discussion,
     DiscussionComment,
 )
@@ -61,6 +62,39 @@ class PerspectiveAttributeListOptionAdmin(admin.ModelAdmin):
     list_display = ("attribute", "value")
     search_fields = ("attribute__name", "value")
 
+class MemberAttributeDescriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'get_member_username',
+        'get_attribute_name',
+        'description',
+        'created_at'
+    )
+    list_filter = (
+        'attribute__type',
+        'created_at',
+    )
+    search_fields = (
+        'member__user__username',
+        'attribute__name',
+        'description'
+    )
+    raw_id_fields = ('member', 'attribute')
+    list_select_related = ('member__user', 'attribute')
+
+    def get_member_username(self, obj):
+        return obj.member.user.username
+    get_member_username.short_description = 'Member'
+    get_member_username.admin_order_field = 'member__user__username'
+
+    def get_attribute_name(self, obj):
+        return f"{obj.attribute.name} ({obj.attribute.type})"
+    get_attribute_name.short_description = 'Attribute'
+    get_attribute_name.admin_order_field = 'attribute__name'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('attribute__options')
+
 class DiscussionAdmin(admin.ModelAdmin):
     list_display = ('id', 'project', 'title', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
@@ -89,5 +123,6 @@ admin.site.register(Tag, TagAdmin)
 admin.site.register(Perspective, PerspectiveAdmin)
 admin.site.register(PerspectiveAttribute, PerspectiveAttributeAdmin)
 admin.site.register(PerspectiveAttributeListOption, PerspectiveAttributeListOptionAdmin)
+admin.site.register(MemberAttributeDescription, MemberAttributeDescriptionAdmin)
 admin.site.register(Discussion, DiscussionAdmin)
 admin.site.register(DiscussionComment, DiscussionCommentAdmin)

@@ -169,19 +169,18 @@ export default Vue.extend({
     }
   },
 
-  computed: {
-    sortedComments() {
-      // Sort comments by creation date ascending (oldest first)
-      return [...this.comments].sort((a, b) => 
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      )
-    }
-  },
-
   async fetch() {
     await this.loadDiscussion()
     await this.loadComments()
     await this.loadCurrentMember()
+  },
+
+  computed: {
+    sortedComments(): DiscussionCommentItem[] {
+      return [...this.comments].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+    }
   },
 
   mounted() {
@@ -207,7 +206,6 @@ export default Vue.extend({
     async loadComments() {
       try {
         const comments = await this.$services.discussion.getComments(this.$route.params.id)
-        // Reverse comments if API returns newest first
         this.comments = comments.reverse()
         this.errorMessage = ''
       } catch (error: any) {
@@ -228,13 +226,12 @@ export default Vue.extend({
           this.$route.params.id,
           this.newComment
         )
-        // Add new comment to the end of the array
+
         this.comments.push(comment)
         this.newComment = ''
         this.successMessage = 'Comment posted successfully'
         setTimeout(() => { this.successMessage = '' }, 3000)
-        
-        // Auto-scroll to bottom
+      
         this.$nextTick(() => {
           const container = this.$el.querySelector('.comments-container')
           if (container) {

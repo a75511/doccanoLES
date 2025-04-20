@@ -287,6 +287,31 @@ class Member(models.Model):
     class Meta:
         unique_together = ("user", "project")
 
+class MemberAttributeDescription(models.Model):
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="attribute_descriptions")
+    attribute = models.ForeignKey(PerspectiveAttribute, on_delete=models.CASCADE)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("member", "attribute")
+
+    def clean(self):
+        if self.attribute.type == AttributeType.LIST:
+            valid_options = [option.value for option in self.attribute.options.all()]
+            if self.description not in valid_options:
+                raise ValidationError(f"Value must be one of: {', '.join(valid_options)}")
+        elif self.attribute.type == AttributeType.NUMBER:
+            if not self.description.isdigit():
+                raise ValidationError("Value must be a number")
+        elif self.attribute.type == AttributeType.BOOLEAN:
+            if self.description.lower() not in ["true", "false"]:
+                raise ValidationError("Value must be 'true' or 'false'")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, kwargs)
+
 class Discussion(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='discussions')
     title = models.CharField(max_length=255, default="Annotation Guidelines Discussion")

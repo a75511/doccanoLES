@@ -5,6 +5,7 @@ from .views.project import CloneProject, ProjectDetail, ProjectList, ProjectLock
 from .views.tag import TagDetail, TagList
 from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject
 from .views.discussion import ActiveDiscussionDetail, CommentDetail, CommentListCreate
+from .views.reporting import disagreement_statistics
 
 urlpatterns = [
     path(route="projects", view=ProjectList.as_view(), name="project_list"),
@@ -24,4 +25,5 @@ urlpatterns = [
     path("projects/<int:project_id>/discussion/comments", CommentListCreate.as_view(), name="discussion_comments"),
     path("projects/<int:project_id>/discussion/comments/<int:comment_id>", CommentDetail.as_view(), name="comment_detail"),
     path("projects/<int:project_id>/lock", ProjectLockView.as_view(), name="project_lock"),
+    path("projects/<int:project_id>/reporting/disagreements-statistics", disagreement_statistics, name="disagreement_reporting"),
 ]
