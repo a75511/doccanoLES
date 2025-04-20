@@ -1,7 +1,8 @@
 from django.conf import settings
 from rest_framework.permissions import SAFE_METHODS, BasePermission
+from django.shortcuts import get_object_or_404
 
-from .models import Member
+from .models import DiscussionComment, Member
 
 
 class RolePermission(BasePermission):
@@ -52,3 +53,8 @@ class IsAnnotationApprover(RolePermission):
 
 IsProjectMember = IsAnnotator | IsAnnotationApprover | IsProjectAdmin  # type: ignore
 IsProjectStaffAndReadOnly = IsAnnotatorAndReadOnly | IsAnnotationApproverAndReadOnly  # type: ignore
+
+class IsCommentAuthor(BasePermission):
+    def has_permission(self, request, view):
+        comment = get_object_or_404(DiscussionComment, id=view.kwargs.get('comment_id'))
+        return comment.member.user == request.user

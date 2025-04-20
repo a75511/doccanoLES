@@ -120,7 +120,7 @@ class AssignPerspectiveToProject(APIView):
         perspective = get_object_or_404(Perspective, id=perspective_id)
 
         try:
-            project.delete_annotations()
+            #project.delete_annotations() REVIEW: Uncomment if you want to delete existing annotations
             project.perspective = perspective
             project.save()
         except Exception as e:

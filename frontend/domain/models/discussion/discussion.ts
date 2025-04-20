@@ -12,10 +12,11 @@ export class DiscussionItem {
 
 export class DiscussionCommentItem {
     constructor(
-        readonly id: number,
-        readonly text: string,
-        readonly member: number,
-        readonly username: string,
-        readonly createdAt: string
+      readonly id: number,
+      readonly text: string,
+      readonly member: number,
+      readonly username: string,
+      readonly createdAt: string,
+      readonly updatedAt: string
     ) {}
-}
+  }

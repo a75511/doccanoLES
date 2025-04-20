@@ -104,7 +104,8 @@
   
   <script lang="ts">
   import Vue from 'vue'
-  import { DisagreementAnalysisSummary, ExampleDisagreement } from '~/domain/models/example/disagreement'
+  import { DisagreementAnalysisSummary, ExampleDisagreement } from '~/domain/models/disagreement/disagreement'
+  
   
   export default Vue.extend({
   

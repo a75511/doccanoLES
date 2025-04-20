@@ -19,6 +19,9 @@ export class PerspectiveApplicationService {
     try {
       return await this.repository.findById(projectId, perspectiveId);
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e
+      }
       throw new Error(e.response?.data?.detail || 'Failed to fetch perspective details.');
     }
   }
@@ -29,6 +32,9 @@ export class PerspectiveApplicationService {
       new SearchQuery(query.limit, query.offset, query.q, query.sortBy, query.sortDesc)
       return await this.repository.list(projectId, searchQuery)
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e
+      }
       throw new Error(e.response?.data?.detail || 'Failed to fetch perspectives.')
     }
   }
@@ -43,6 +49,9 @@ export class PerspectiveApplicationService {
       new SearchQuery(query.limit, query.offset, query.q, query.sortBy, query.sortDesc);
       return await this.repository.listAttributes(projectId, perspectiveId, searchQuery);
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e
+      }
       throw new Error(e.response?.data?.detail || 'Failed to fetch attributes.');
     }
   }
@@ -53,6 +62,9 @@ export class PerspectiveApplicationService {
         const response = await this.repository.assignToProject(projectId, perspectiveId);
         return response;
     } catch (e: any) {
+        if (e.response?.status === 500) {
+            throw e
+        }
         throw new Error(e.response?.data?.detail || 'Failed to assign perspective to project.');
     }
   }

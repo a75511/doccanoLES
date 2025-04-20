@@ -20,7 +20,8 @@ function toCommentModel(item: any): DiscussionCommentItem {
     item.text,
     item.member,
     item.username,
-    item.created_at
+    item.created_at,
+    item.updated_at
   )
 }
 
@@ -48,5 +49,17 @@ export class APIDiscussionRepository {
     const url = `/projects/${projectId}/discussion/comments`
     const response = await this.request.post(url, { text })
     return toCommentModel(response.data)
+  }
+
+  async updateComment(projectId: string, commentId: number,
+     text: string): Promise<DiscussionCommentItem> {
+    const url = `/projects/${projectId}/discussion/comments/${commentId}`
+    const response = await this.request.put(url, { text })
+    return toCommentModel(response.data)
+  }
+  
+  async deleteComment(projectId: string, commentId: number): Promise<void> {
+    const url = `/projects/${projectId}/discussion/comments/${commentId}`
+    await this.request.delete(url)
   }
 }

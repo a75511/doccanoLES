@@ -41,7 +41,8 @@ import {
   mdiPlayCircleOutline,
   mdiEyeSettings,
   mdiSetLeft,
-  mdiForum
+  mdiForum,
+  mdiFileChart
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -153,6 +154,12 @@ export default {
           icon: mdiForum,
           text: 'Discussions',
           link: 'discussions',
+          isVisible: this.isProjectAdmin || this.isApprover || this.isAnnotator
+        },
+        {
+          icon: mdiFileChart,
+          text: 'Reporting',
+          link: 'reporting',
           isVisible: this.isProjectAdmin || this.isApprover
         },
       ]
