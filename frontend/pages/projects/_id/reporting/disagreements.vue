@@ -4,7 +4,10 @@
       <v-toolbar color="primary" dark flat>
         <v-toolbar-title>Disagreement Statistics</v-toolbar-title>
         <v-spacer></v-spacer>
-        <export-menu @csv="exportCSV" @pdf="exportPDF" @preview="previewReport"/>
+        <export-menu 
+          @export="handleExport"
+          @error="showError"
+        />
       </v-toolbar>
 
       <v-card-text class="grey lighten-4 py-2">
@@ -23,7 +26,7 @@
           </v-col>
           <v-col cols="12" md="4" class="pl-md-2">
             <v-btn color="primary" @click="refreshData">
-              <v-icon left>mdi-refresh</v-icon>
+              <v-icon left>{{icons.refresh}}</v-icon>
               Refresh
             </v-btn>
           </v-col>
@@ -75,6 +78,7 @@
 </template>
 
 <script>
+import { mdiRefresh } from '@mdi/js'
 import ExportMenu from '@/components/reporting/ExportMenu.vue'
 import MemberSelector from '@/components/reporting/MemberSelector.vue'
 import PerspectiveFilter from '@/components/reporting/PerspectiveFilter.vue'
@@ -97,7 +101,11 @@ export default {
       selectedMembers: [],
       selectedAttributes: [],
       loading: false,
-      error: null
+      exportLoading: false,
+      error: null,
+      icons: {
+        refresh: mdiRefresh
+      }
     }
   },
 
@@ -141,35 +149,69 @@ export default {
       this.loadData()
     },
 
-    exportCSV() {
+    async handleExport(formats) {
       if (!this.stats) {
-        this.error = 'No data to export'
+        this.showError('No data to export')
         return
       }
 
-      const csvContent = [
-        ['Category', 'Attribute', 'Value', 'Members Count', 'Percentage'],
-        ['Overall Agreement', '', '', this.stats.total_examples, 
-          `${(100 - this.stats.conflict_percentage).toFixed(2)}%`
-        ],
-        ...this.stats.attribute_distributions.flatMap(attr => 
-          attr.data.map(item => [
-            'Attribute Distribution',
-            attr.attribute,
-            item.value,
-            item.count,
-            `${item.percentage.toFixed(2)}%`
-          ])
-        )
-      ]
-
-      this.$export.exportCSV(csvContent, 'disagreement-statistics.csv')
+      this.exportLoading = true
+      try {
+        for (const format of formats) {
+          switch(format) {
+            case 'csv':
+              await this.exportCSV()
+              break
+            case 'pdf':
+              await this.exportPDF()
+              break
+            case 'preview':
+              await this.previewReport()
+              break
+          }
+        }
+        this.$store.dispatch('showSnackbar', {
+          text: `Exported ${formats.length} format(s) successfully`,
+          color: 'success'
+        })
+      } catch (e) {
+        this.showError('Export failed: ' + (e.message || 'Unknown error'))
+      } finally {
+        this.exportLoading = false
+      }
     },
+
+    showError(message) {
+      this.error = message
+      setTimeout(() => {
+        this.error = null
+      }, 5000)
+    },
+
+    exportCSV() {
+      return new Promise((resolve) => {
+        const csvContent = [
+          ['Category', 'Attribute', 'Value', 'Members Count', 'Percentage'],
+          ['Overall Agreement', '', '', this.stats.total_examples, 
+            `${(100 - this.stats.conflict_percentage).toFixed(2)}%`
+          ],
+          ...this.stats.attribute_distributions.flatMap(attr => 
+            attr.data.map(item => [
+              'Attribute Distribution',
+              attr.attribute,
+              item.value,
+              item.count,
+              `${item.percentage.toFixed(2)}%`
+            ])
+          )
+        ]
+
+        this.$export.exportCSV(csvContent, 'disagreement-statistics.csv')
+        resolve()
+      })
+    },
+
     async exportPDF() {
-      if (!this.stats) {
-        this.error = 'No data to export'
-        return
-      }
       try {
         await this.$nextTick()
         const { jsPDF: JsPDF } = await import('jspdf')
@@ -212,13 +254,13 @@ export default {
 
         pdfDoc.save(`disagreement-statistics-${this.$route.params.id}.pdf`)
       } catch (e) {
-        this.error = 'Error generating PDF'
+        throw new Error('Error generating PDF')
       }
     },
+
     async previewReport() {
       if (!this.stats) {
-        this.error = 'No data to preview'
-        return
+        throw new Error('No data to preview')
       }
 
       try {
@@ -270,7 +312,7 @@ export default {
         previewWindow.document.body.innerHTML = container.innerHTML
         previewWindow.document.title = 'Statistics Preview'
       } catch (e) {
-        this.error = 'Failed to generate preview'
+        throw new Error('Failed to generate preview')
       }
     },
     
@@ -296,15 +338,15 @@ export default {
         return null
       }
     }
-    }
   }
-  </script>
-  
-  <style scoped>
-  .chart-container {
-    background: white;
-    border-radius: 4px;
-    padding: 16px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  </style>
+}
+</script>
+
+<style scoped>
+.chart-container {
+  background: white;
+  border-radius: 4px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
