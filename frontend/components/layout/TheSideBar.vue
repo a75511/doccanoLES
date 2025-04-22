@@ -42,7 +42,8 @@ import {
   mdiEyeSettings,
   mdiSetLeft,
   mdiForum,
-  mdiFileChart
+  mdiFileChart,
+  mdiVote,
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -154,7 +155,7 @@ export default {
           icon: mdiForum,
           text: 'Discussions',
           link: 'discussions',
-          isVisible: this.isProjectAdmin || this.isApprover || this.isAnnotator
+          isVisible: true,
         },
         {
           icon: mdiFileChart,
@@ -162,6 +163,12 @@ export default {
           link: 'reporting',
           isVisible: this.isProjectAdmin || this.isApprover
         },
+        {
+          icon: mdiVote,
+          text: 'Voting',
+          link: 'voting',
+          isVisible: true,
+        }
       ]
       return items.filter((item) => item.isVisible)
     }

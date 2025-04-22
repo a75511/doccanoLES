@@ -13,6 +13,7 @@ import { PerspectiveApplicationService } from '~/services/application/perspectiv
 import { DisagreementApplicationService, AnalysisApplicationService } from '~/services/application/disagreement/disagreementApplicationService'
 import { DiscussionApplicationService } from '~/services/application/discussion/discussionApplicationService'
 import { ReportingApplicationService } from '~/services/application/reporting/reportingApplicationService'
+import { VotingApplicationService } from '~/services/application/voting/votingApplicationService'
 
 export interface Services {
   categoryType: LabelApplicationService
@@ -31,6 +32,7 @@ export interface Services {
   disagreement: DisagreementApplicationService
   discussion: DiscussionApplicationService
   reporting: ReportingApplicationService
+  voting: VotingApplicationService
 }
 
 declare module 'vue/types/vue' {
@@ -60,6 +62,7 @@ const plugin: Plugin = (_, inject) => {
     disagreement: new DisagreementApplicationService(repositories.disagreement),
     discussion: new DiscussionApplicationService(repositories.discussion),
     reporting: new ReportingApplicationService(repositories.reporting),
+    voting: new VotingApplicationService(repositories.voting),
   }
   inject('services', services)
 }

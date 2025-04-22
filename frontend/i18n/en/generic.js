@@ -19,4 +19,5 @@ export default {
   type: 'Type',
   loading: 'Loading... Please wait',
   actions: 'Actions',
+  projects: 'Project',
 }

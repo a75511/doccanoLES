@@ -17,6 +17,7 @@ import overview from './projects/overview'
 import statistics from './projects/statistics'
 import settings from './projects/settings'
 import perspectives from './projects/perspectives'
+import voting from './projects/voting'
 
 export default {
   home,
@@ -37,5 +38,6 @@ export default {
   overview,
   statistics,
   settings,
-  perspectives
+  perspectives,
+  voting
 }

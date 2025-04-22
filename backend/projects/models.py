@@ -338,3 +338,31 @@ class DiscussionComment(models.Model):
 
     class Meta:
         ordering = ['created_at']
+
+class GuidelineVoting(models.Model):
+    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='voting')
+    current_discussion = models.ForeignKey(Discussion, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=(
+            ('not_started', 'Not Started'),
+            ('voting', 'Voting'),
+            ('completed', 'Completed')
+        ),
+        default='not_started'
+    )
+    guidelines_snapshot = models.TextField(blank=True)
+
+    def save_guideline_snapshot(self):
+        """Save current project guideline as snapshot when voting ends"""
+        self.guidelines_snapshot = self.project.guideline
+        self.save()
+
+class MemberVote(models.Model):
+    voting_session = models.ForeignKey(GuidelineVoting, on_delete=models.CASCADE, related_name='votes')
+    user = models.ForeignKey(Member, on_delete=models.CASCADE)
+    agrees = models.BooleanField()
+    voted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('voting_session', 'user')

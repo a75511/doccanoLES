@@ -20,6 +20,8 @@ from .models import (
     AttributeType,
     Discussion,
     DiscussionComment,
+    MemberVote,
+    GuidelineVoting,
 )
 
 
@@ -216,7 +218,6 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
         **{cls.Meta.model: cls for cls in ProjectSerializer.__subclasses__()},
     }
 
-
 class DiscussionCommentSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
     discussion = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -237,3 +238,35 @@ class DiscussionSerializer(serializers.ModelSerializer):
         fields = ['id', 'project', 'title', 'description', 'is_active',
                  'created_at', 'updated_at', 'comments']
         read_only_fields = ['project', 'is_active']
+
+class MemberVoteSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.user.username', read_only=True)
+    
+    class Meta:
+        model = MemberVote
+        fields = ['id', 'user', 'username', 'agrees', 'voted_at']
+        read_only_fields = ['user', 'voted_at'] 
+
+class VotingSessionSerializer(serializers.ModelSerializer):
+    votes = MemberVoteSerializer(many=True, read_only=True)
+    agree_count = serializers.SerializerMethodField()
+    disagree_count = serializers.SerializerMethodField()
+    agreement_percentage = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GuidelineVoting
+        fields = ['id', 'status', 'guidelines_snapshot', 'current_discussion', 
+         'votes', 'agree_count', 'disagree_count', 'agreement_percentage']
+        read_only_fields = fields
+
+    def get_agree_count(self, obj):
+        return obj.votes.filter(agrees=True).count()
+
+    def get_disagree_count(self, obj):
+        return obj.votes.filter(agrees=False).count()
+
+    def get_agreement_percentage(self, obj):
+        total = obj.votes.count()
+        if total == 0:
+            return 0
+        return round(obj.votes.filter(agrees=True).count() / total) * 100

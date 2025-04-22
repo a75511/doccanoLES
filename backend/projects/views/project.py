@@ -6,7 +6,7 @@ from rest_framework import filters, generics, status, views
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from projects.models import Project
+from projects.models import Project, Discussion, GuidelineVoting
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 from projects.serializers import ProjectPolymorphicSerializer
 
@@ -73,19 +73,34 @@ class ProjectLockView(views.APIView):
         project = get_object_or_404(Project, pk=kwargs["project_id"])
         lock_status = request.data.get('locked')
         
-        if lock_status is None:
-            return Response(
-                {"detail": "'locked' field is required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        # Validate input
         if not isinstance(lock_status, bool):
             return Response(
                 {"detail": "'locked' must be a boolean."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        # Handle locking logic
+        if lock_status and not project.locked:
+            # Close existing active discussion
+            Discussion.objects.filter(project=project, is_active=True).update(is_active=False)
+            
+            # Create new discussion
+            new_discussion = Discussion.objects.create(
+                project=project,
+                title="Guidelines Discussion",
+                description="Initial discussion for locked project guidelines",
+                is_active=True
+            )
+            
+            # Create voting session
+            GuidelineVoting.objects.create(
+                project=project,
+                current_discussion=new_discussion,
+                status='not_started',
+                guidelines_snapshot=project.guideline
+            )
+
         project.locked = lock_status
         project.save()
-        
         return Response({"locked": project.locked})

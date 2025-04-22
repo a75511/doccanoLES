@@ -6,6 +6,7 @@ from .views.tag import TagDetail, TagList
 from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject
 from .views.discussion import ActiveDiscussionDetail, CommentDetail, CommentListCreate
 from .views.reporting import disagreement_statistics
+from .views.voting import VotingSessionView, StartVotingView, SubmitVoteView, EndVotingView
 
 urlpatterns = [
     path(route="projects", view=ProjectList.as_view(), name="project_list"),
@@ -24,6 +25,10 @@ urlpatterns = [
     path("projects/<int:project_id>/discussion", ActiveDiscussionDetail.as_view(), name="active_discussion"),
     path("projects/<int:project_id>/discussion/comments", CommentListCreate.as_view(), name="discussion_comments"),
     path("projects/<int:project_id>/discussion/comments/<int:comment_id>", CommentDetail.as_view(), name="comment_detail"),
-    path("projects/<int:project_id>/lock", ProjectLockView.as_view(), name="project_lock"),
     path("projects/<int:project_id>/reporting/disagreements-statistics", disagreement_statistics, name="disagreement_reporting"),
+    path(route="projects/<int:project_id>/lock", view=ProjectLockView.as_view(), name="project_lock"),
+    path(route='projects/<int:project_id>/voting', view=VotingSessionView.as_view(), name='voting_status'),
+    path(route='projects/<int:project_id>/start-voting', view=StartVotingView.as_view(), name='start_voting'),
+    path(route='projects/<int:project_id>/vote', view=SubmitVoteView.as_view(), name='submit_vote'),
+    path(route='projects/<int:project_id>/end-voting', view=EndVotingView.as_view(), name='end_voting'),
 ]

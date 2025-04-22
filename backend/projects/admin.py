@@ -17,6 +17,8 @@ from .models import (
     MemberAttributeDescription,
     Discussion,
     DiscussionComment,
+    GuidelineVoting,
+    MemberVote,
 )
 
 
@@ -109,6 +111,11 @@ class DiscussionCommentAdmin(admin.ModelAdmin):
     raw_id_fields = ('discussion', 'member')
     ordering = ('-created_at',)
 
+class GuidelineVotingAdmin(admin.ModelAdmin):
+    list_display = ('project', 'status')
+
+class MemberVoteAdmin(admin.ModelAdmin):
+    list_display = ('voting_session', 'member', 'agrees')
 
 admin.site.register(Member, MemberAdmin)
 admin.site.register(Project, ProjectAdmin)
@@ -126,3 +133,4 @@ admin.site.register(PerspectiveAttributeListOption, PerspectiveAttributeListOpti
 admin.site.register(MemberAttributeDescription, MemberAttributeDescriptionAdmin)
 admin.site.register(Discussion, DiscussionAdmin)
 admin.site.register(DiscussionComment, DiscussionCommentAdmin)
+admin.site.register(GuidelineVoting, GuidelineVotingAdmin)

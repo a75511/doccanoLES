@@ -28,6 +28,7 @@ import { APIPerspectiveRepository } from '~/repositories/perspective/apiPerspect
 import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories/disagreement/apiDisagreementRepository'
 import { APIDiscussionRepository } from '~/repositories/discussion/apiDiscussionRepository'
 import { APIReportingRepository } from '~/repositories/reporting/apiReportingRepository'
+import { APIVotingRepository } from '~/repositories/voting/apiVotingRepository'
 
 export interface Repositories {
   // User
@@ -42,7 +43,7 @@ export interface Repositories {
   perspective: APIPerspectiveRepository
   discussion: APIDiscussionRepository
   reporting: APIReportingRepository
-
+  voting: APIVotingRepository
 
   // Example
   example: APIExampleRepository
@@ -99,6 +100,7 @@ const repositories: Repositories = {
   perspective: new APIPerspectiveRepository(),
   discussion: new APIDiscussionRepository(),
   reporting: new APIReportingRepository(),
+  voting: new APIVotingRepository(),
 
   // Example
   example: new APIExampleRepository(),
