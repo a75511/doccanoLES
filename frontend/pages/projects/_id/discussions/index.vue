@@ -45,12 +45,25 @@
               :key="comment.id"
               class="comment-item"
             >
-              <v-list-item-avatar>
-                <v-icon>{{ mdiAccountCircle }}</v-icon>
-              </v-list-item-avatar>
+            <v-list-item-avatar>
+              <div 
+                class="member-avatar"
+                :style="{ 
+                  backgroundColor: $generateColor(comment.username),
+                  color: $contrastColor($generateColor(comment.username))
+                }"
+              >
+                {{ comment.username.charAt(0).toUpperCase() }}
+              </div>
+            </v-list-item-avatar>
               <v-list-item-content class="py-2">
                 <div class="d-flex align-center">
-                  <span class="username font-weight-medium">{{ comment.username }}</span>
+                  <span 
+                    class="username font-weight-medium"
+                    :style="{ color: $generateColor(comment.username) }"
+                  >
+                    {{ comment.username }}
+                  </span>
                   <span class="timestamp mx-2">•</span>
                   <span class="timestamp text-caption">
                     {{ formatDate(comment.createdAt) }}
@@ -356,9 +369,21 @@ export default Vue.extend({
   z-index: 1;
 }
 
+.member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
 .username {
   font-size: 0.875rem;
   line-height: 1.25rem;
+  transition: color 0.2s;
 }
 
 .timestamp {
