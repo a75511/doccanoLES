@@ -112,18 +112,25 @@ export default {
   computed: {
     pieData() {
       if (!this.stats) return { agreement: 0, conflict: 0 }
+      const total = this.stats.total_examples || 1
+      const conflictPercentage = (this.stats.conflict_count / total) * 100
       return {
-        agreement: 100 - this.stats.conflict_percentage,
-        conflict: this.stats.conflict_percentage
+        agreement: 100 - conflictPercentage,
+        conflict: conflictPercentage
       }
     },
     attributeDistributions() {
-      return this.stats?.attribute_distributions || []
+      if (!this.stats) return []
+      return this.stats.attribute_distributions.map(attr => ({
+        attribute: attr.attribute,
+        total_members: attr.total_members,
+        data: attr.data.map(item => ({
+          value: item.value,
+          count: item.count,
+          percentage: (item.count / attr.total_members) * 100
+        }))
+      }))
     }
-  },
-
-  mounted() {
-    this.loadData()
   },
 
   methods: {
@@ -190,12 +197,13 @@ export default {
 
     exportCSV() {
       return new Promise((resolve) => {
+        const conflictPercentage = (this.stats.conflict_count / this.stats.total_examples) * 100
         const csvContent = [
           ['Category', 'Attribute', 'Value', 'Members Count', 'Percentage'],
           ['Overall Agreement', '', '', this.stats.total_examples, 
-            `${(100 - this.stats.conflict_percentage).toFixed(2)}%`
+            `${(100 - conflictPercentage).toFixed(2)}%`
           ],
-          ...this.stats.attribute_distributions.flatMap(attr => 
+          ...this.attributeDistributions.flatMap(attr => 
             attr.data.map(item => [
               'Attribute Distribution',
               attr.attribute,

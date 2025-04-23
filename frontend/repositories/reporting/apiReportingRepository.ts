@@ -26,33 +26,18 @@ export class APIReportingRepository {
     const response = await this.request.get(`/projects/${projectId}/reporting/disagreements-statistics?${params}`) as {
       data: {
         total_examples: number,
-        conflict_percentage: number,
+        conflict_count: number,
         attribute_distributions: {
-          [x: string]: any
           attribute: string,
           total_members: number,
           data: {
             value: string,
-            count: number,
-            percentage: number
+            count: number
           }[];
-        };
+        }[];
       }
     }
 
-    return {
-      total_examples: response.data.total_examples,
-      conflict_percentage: response.data.conflict_percentage,
-      attribute_distributions: response.data.attribute_distributions.map((attr:
-         { attribute: any; total_members: any; data: any[] }) => ({
-        attribute: attr.attribute,
-        total_members: attr.total_members,
-        data: attr.data.map((item: { value: any; count: any; percentage: any }) => ({
-          value: item.value,
-          count: item.count,
-          percentage: item.percentage
-        }))
-      }))
-    }
+    return response.data
   }
 }
