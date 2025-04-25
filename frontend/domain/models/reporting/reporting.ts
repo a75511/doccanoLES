@@ -9,4 +9,14 @@ export interface DisagreementStatistics {
       count: number
     }[]
   }[]
+  label_distributions: {
+    attribute: string
+    descriptions: {
+      description: string
+      labels: {
+        label: string
+        count: number
+      }[]
+    }[]
+  }[]
 }

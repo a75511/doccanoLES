@@ -24,6 +24,19 @@
               :project-id="$route.params.id" 
             />
           </v-col>
+          <v-col cols="12" md="3" class="pl-md-2">
+            <description-filter 
+              v-model="selectedDescriptions"
+              :project-id="$route.params.id"
+              :selected-attributes="selectedAttributes"
+            />
+          </v-col>
+          <v-col cols="12" md="3" class="pl-md-2">
+            <label-filter 
+              v-model="selectedLabels"
+              :project-id="$route.params.id"
+            />
+          </v-col>
           <v-col cols="12" md="4" class="pl-md-2">
             <v-btn color="primary" @click="refreshData">
               <v-icon left>{{icons.refresh}}</v-icon>
@@ -43,7 +56,7 @@
         <template v-if="!loading && stats">
           <v-row justify="center">
             <v-col cols="12" md="6">
-              <pie-chart
+              <doughnut-charts
                 v-if="stats.total_examples > 0"
                 ref="pieChart"
                 :conflict-data="pieData"
@@ -52,21 +65,28 @@
             </v-col>
           </v-row>
 
-          <template v-for="attr in attributeDistributions">
-            <v-divider :key="`divider-${attr.attribute}`" class="my-4"></v-divider>
-            <v-subheader 
-              :key="`subheader-${attr.attribute}`" 
-              class="text-h6"
-            >
-              {{ attr.attribute }} ({{ attr.total_members }} members)
+          <template v-for="dist in labelDistributions">
+            <v-divider 
+            :key="`div-${dist.attribute}-${dist.description}-${dist.examples[0]?.example_id}`"
+             class="my-6"></v-divider>
+            <v-subheader :key="`subheader-${dist.attribute}`"  class="text-h4 primary--text">
+              {{ dist.attribute }} - {{ dist.description }}
             </v-subheader>
             
-            <v-row :key="`row-${attr.attribute}`" justify="center">
-              <v-col cols="12" md="6">
-                <pie-chart
-                  :ref="`attr-${attr.attribute}`"
-                  :distribution-data="attr.data"
-                  :title="`${attr.attribute} Distribution`"
+            <v-row v-for="example in dist.examples" :key="example.example_id">
+              <v-col cols="12" md="3">
+                <v-card outlined>
+                  <v-card-title>Text: {{ truncate(example.example_text, 50) }}</v-card-title>
+                  <v-card-text>
+                    Total Annotations: {{ exampleTotal(example) }}
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="9">
+                <doughnut-charts
+                  :distribution-data="formatChartData(example)"
+                  :example-name="example.example_text"
+                  :title="`${dist.attribute} Distribution`"
                 />
               </v-col>
             </v-row>
@@ -82,14 +102,18 @@ import { mdiRefresh } from '@mdi/js'
 import ExportMenu from '@/components/reporting/ExportMenu.vue'
 import MemberSelector from '@/components/reporting/MemberSelector.vue'
 import PerspectiveFilter from '@/components/reporting/PerspectiveFilter.vue'
-import PieChart from '@/components/reporting/PieCharts.vue'
+import DescriptionFilter from '@/components/reporting/DescriptionFilter.vue'
+import LabelFilter from '@/components/reporting/LabelFilter.vue'
+import DoughnutCharts from '~/components/reporting/DoughnutCharts.vue'
 
 export default {
   components: {
     ExportMenu,
     MemberSelector,
     PerspectiveFilter,
-    PieChart
+    DoughnutCharts,
+    LabelFilter,
+    DescriptionFilter,
   },
 
   layout: 'project',
@@ -100,6 +124,8 @@ export default {
       stats: null,
       selectedMembers: [],
       selectedAttributes: [],
+      selectedDescriptions: [],
+      selectedLabels: [],
       loading: false,
       exportLoading: false,
       error: null,
@@ -119,17 +145,9 @@ export default {
         conflict: conflictPercentage
       }
     },
-    attributeDistributions() {
-      if (!this.stats) return []
-      return this.stats.attribute_distributions.map(attr => ({
-        attribute: attr.attribute,
-        total_members: attr.total_members,
-        data: attr.data.map(item => ({
-          value: item.value,
-          count: item.count,
-          percentage: (item.count / attr.total_members) * 100
-        }))
-      }))
+    labelDistributions() {
+      if (!this.stats?.label_distributions) return []
+      return this.stats.label_distributions
     }
   },
 
@@ -141,7 +159,9 @@ export default {
           this.$route.params.id,
           {
             members: this.selectedMembers,
-            attributes: this.selectedAttributes
+            attributes: this.selectedAttributes,
+            descriptions: this.selectedDescriptions,
+            labels: this.selectedLabels
           }
         )
         this.stats = response
@@ -154,6 +174,21 @@ export default {
 
     refreshData() {
       this.loadData()
+    },
+
+    formatChartData(example) {
+      const total = example.labels.reduce((sum, item) => sum + item.count, 0)
+      return example.labels.map(item => ({
+        value: item.label,
+        count: item.count,
+        percentage: total > 0 ? (item.count / total * 100) : 0
+      }))
+    },
+    exampleTotal(example) {
+      return example.labels.reduce((sum, item) => sum + item.count, 0)
+    },
+    truncate(text, length) {
+      return text?.length > length ? text.substr(0, length) + '...' : text
     },
 
     async handleExport(formats) {

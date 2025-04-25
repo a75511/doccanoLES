@@ -5,8 +5,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.db import DatabaseError, IntegrityError
-from projects.models import Perspective, Project, PerspectiveAttribute, PerspectiveAttributeListOption
+from projects.models import MemberAttributeDescription, Perspective, Project, PerspectiveAttribute, PerspectiveAttributeListOption
 from projects.serializers import PerspectiveAttributeSerializer, PerspectiveSerializer, ProjectSerializer, PerspectiveAttributeListOptionSerializer
+from projects.permissions import IsProjectAdmin, IsAnnotationApprover
 
 class PerspectiveListView(generics.ListCreateAPIView):
     serializer_class = PerspectiveSerializer
@@ -131,4 +132,29 @@ class AssignPerspectiveToProject(APIView):
             "message": "Perspective assigned successfully.",
             "project": serializer.data
         }, status=status.HTTP_200_OK)
+    
+class AttributeDescriptionsView(APIView):
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
+
+    def get(self, request, project_id):
+        try:
+            perspective_attributes = request.GET.getlist('attributes', [])
+            
+            descriptions_data = MemberAttributeDescription.objects.filter(
+                attribute__name__in=perspective_attributes,
+                attribute__perspective__projects=project_id
+            ).values(
+                'attribute__name',
+                'description'
+            ).distinct()
+            
+            return Response({
+                'attribute_descriptions': [
+                    {'attribute': d['attribute__name'], 'description': d['description']}
+                    for d in descriptions_data
+                ]
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

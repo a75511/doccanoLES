@@ -1,9 +1,14 @@
 <script>
-import { Pie } from 'vue-chartjs'
+import { Doughnut } from 'vue-chartjs'
 
 export default {
-  extends: Pie,
+  extends: Doughnut,
   props: {
+    exampleName: String,
+    showAgreement: {
+      type: Boolean,
+      default: true
+    },
     conflictData: {
       type: Object,
       default: () => ({ agreement: 0, conflict: 0 }),
@@ -17,9 +22,24 @@ export default {
     title: {
       type: String,
       default: ''
+    },
+  },
+  computed: {
+    agreementStatus() {
+      const threshold = 60
+      const hasAgreement = this.distributionData.some(d => d.percentage >= threshold)
+      return hasAgreement ? 'agreement' : 'disagreement'
+    },
+    agreementText() {
+      return this.agreementStatus === 'agreement' ? 
+        'Consensus Reached' : 'Needs Review'
+    },
+    agreementPercentage() {
+      const max = Math.max(...this.distributionData.map(d => d.percentage))
+      return max.toFixed(1)
     }
   },
-  
+
   mounted() {
     if (this.distributionData.length > 0) {
       this.renderDistributionChart()
@@ -29,6 +49,30 @@ export default {
   },
 
   methods: {
+    setupChartContainer() {
+      this.$el.innerHTML = `
+        <div class="chart-container" style="position: relative; height: 400px">
+          ${this.showAgreement ? `
+            <div class="agreement-indicator ${this.agreementStatus}">
+              ${this.agreementText} (${this.agreementPercentage}%)
+            </div>` : ''}
+          <canvas style="height: 350px; width: 100%"></canvas>
+          ${this.exampleName ? `
+            <div class="example-name">${this.exampleName}</div>` : ''}
+        </div>
+      `
+    },
+
+    mounted() {
+      this.setupChartContainer()
+      this.$nextTick(() => {
+        if (this.distributionData.length > 0) {
+          this.renderDistributionChart()
+        } else if (this.conflictData.agreement !== undefined) {
+          this.renderConflictChart()
+        }
+      })
+    },
     renderDistributionChart() {
       this.renderChart(
         {
@@ -38,10 +82,13 @@ export default {
             backgroundColor: [
               '#4CAF50', '#2196F3', '#FF9800', '#E91E63', 
               '#9C27B0', '#00BCD4', '#CDDC39', '#607D8B'
-            ]
+            ],
+            borderWidth: 3,
+            hoverOffset: 10
           }]
         },
         {
+          cutoutPercentage: 60,
           responsive: true,
           maintainAspectRatio: false,
           title: {
@@ -71,7 +118,8 @@ export default {
               label: (tooltipItem, data) => {
                 const label = data.labels[tooltipItem.index]
                 const value = data.datasets[0].data[tooltipItem.index]
-                return `${label}: ${value.toFixed(1)}% (${this.distributionData[tooltipItem.index].count} members)`
+                const count = this.distributionData[tooltipItem.index].count
+                return `${label}: ${value.toFixed(1)}% (${count} annotations)`
               }
             }
           }
@@ -85,10 +133,12 @@ export default {
           labels: ['Agreements', 'Conflicts'],
           datasets: [{
             data: [this.conflictData.agreement, this.conflictData.conflict],
-            backgroundColor: ['#4CAF50', '#F44336']
+            backgroundColor: ['#4CAF50', '#F44336'],
+            borderWidth: 3,
           }]
         },
         {
+          cutoutPercentage: 60,
           responsive: true,
           maintainAspectRatio: false,
           title: {
@@ -130,3 +180,29 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.agreement-indicator {
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.agreement-indicator.agreement {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.agreement-indicator.disagreement {
+  background-color: #F44336;
+  color: white;
+}
+
+.example-name {
+  margin-top: 16px;
+  font-style: italic;
+  text-align: center;
+}
+</style>
