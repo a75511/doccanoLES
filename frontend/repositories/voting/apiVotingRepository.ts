@@ -12,9 +12,9 @@ export class APIVotingRepository {
 
   async startVoting(projectId: string): Promise<GuidelineVotingItem> {
     const url = `/projects/${projectId}/start-voting`;
-    const response = await this.request.post(url);
+    const response = await this.request.patch(url);  // Changed from post to patch
     return this.toModel(response.data);
-  }
+}
 
   async submitVote(projectId: string, agrees: boolean): Promise<MemberVoteItem> {
     const url = `/projects/${projectId}/vote`;
@@ -24,6 +24,12 @@ export class APIVotingRepository {
 
   async endVoting(projectId: string): Promise<GuidelineVotingItem> {
     const url = `/projects/${projectId}/end-voting`;
+    const response = await this.request.patch(url);  // Changed from post to patch
+    return this.toModel(response.data);
+}
+
+  async createFollowUp(projectId: string): Promise<GuidelineVotingItem> {
+    const url = `/projects/${projectId}/create-follow-up`;
     const response = await this.request.post(url);
     return this.toModel(response.data);
   }
@@ -38,7 +44,8 @@ export class APIVotingRepository {
       item.agree_count,
       item.disagree_count,
       item.agreement_percentage,
-      item.votes ? item.votes.map((vote: any) => this.toVoteModel(vote)) : []
+      item.votes ? item.votes.map((vote: any) => this.toVoteModel(vote)) : [],
+      item.previous_voting // Add previous voting reference if needed
     );
   }
 

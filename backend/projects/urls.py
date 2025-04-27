@@ -6,7 +6,7 @@ from .views.tag import TagDetail, TagList
 from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject, AttributeDescriptionsView
 from .views.discussion import ActiveDiscussionDetail, CommentDetail, CommentListCreate
 from .views.reporting import ReportingView
-from .views.voting import VotingSessionView, StartVotingView, SubmitVoteView, EndVotingView
+from .views.voting import VotingSessionView, StartVotingView, SubmitVoteView, EndVotingView, CreateFollowUpVotingView
 
 urlpatterns = [
     path(route="projects", view=ProjectList.as_view(), name="project_list"),
@@ -32,4 +32,5 @@ urlpatterns = [
     path(route='projects/<int:project_id>/start-voting', view=StartVotingView.as_view(), name='start_voting'),
     path(route='projects/<int:project_id>/vote', view=SubmitVoteView.as_view(), name='submit_vote'),
     path(route='projects/<int:project_id>/end-voting', view=EndVotingView.as_view(), name='end_voting'),
+    path('projects/<int:project_id>/create-follow-up', CreateFollowUpVotingView.as_view(), name='create_follow_up'),
 ]

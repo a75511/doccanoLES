@@ -14,35 +14,36 @@ class VotingSessionView(generics.RetrieveAPIView):
 
     def get_object(self):
         project = get_object_or_404(Project, pk=self.kwargs['project_id'])
-        return get_object_or_404(GuidelineVoting, project=project)
+        # Get the most recent voting session
+        return project.voting_sessions.order_by('-created_at').first()
 
-class StartVotingView(generics.CreateAPIView):
+class StartVotingView(generics.UpdateAPIView):  # Changed from CreateUpdateAPIView
     serializer_class = VotingSessionSerializer
     permission_classes = [IsAuthenticated & IsProjectAdmin]
 
     def get_object(self):
         project = get_object_or_404(Project, pk=self.kwargs['project_id'])
-        discussion = get_object_or_404(Discussion, project=project, is_active=True)
-        voting, _ = GuidelineVoting.objects.get_or_create(project=project)
-        voting.current_discussion = discussion
-        voting.guidelines_snapshot = project.guideline
-        voting.status = 'voting'
-        voting.save()
+        # Get the most recent voting session or create a new one
+        voting = project.voting_sessions.order_by('-created_at').first()
+        if not voting:
+            voting = GuidelineVoting.objects.create(
+                project=project,
+                status='not_started'
+            )
         return voting
 
-    def create(self, request, *args, **kwargs):
-        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
-        discussion = get_object_or_404(Discussion, project=project, is_active=True)
+    def patch(self, request, *args, **kwargs):
+        voting = self.get_object()
+        discussion = get_object_or_404(Discussion, project=voting.project, is_active=True)
         
-        voting, created = GuidelineVoting.objects.update_or_create(
-            project=project,
-            defaults={
-                'current_discussion': discussion,
-                'guidelines_snapshot': project.guideline,
-                'status': 'voting'
-            }
-        )
-        return Response(self.get_serializer(voting).data, status=status.HTTP_201_CREATED)
+        # Update voting session
+        voting.current_discussion = discussion
+        voting.guidelines_snapshot = voting.project.guideline
+        voting.status = 'voting'
+        voting.save()
+        
+        serializer = self.get_serializer(voting)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class SubmitVoteView(generics.CreateAPIView):
     serializer_class = MemberVoteSerializer
@@ -64,41 +65,61 @@ class SubmitVoteView(generics.CreateAPIView):
         serializer.save(voting_session=voting, user=member)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-class EndVotingView(generics.CreateAPIView):
+class EndVotingView(generics.UpdateAPIView):  # Changed from CreateAPIView
     serializer_class = VotingSessionSerializer
     permission_classes = [IsAuthenticated & IsProjectAdmin]
 
     def get_object(self):
         project = get_object_or_404(Project, pk=self.kwargs['project_id'])
-        voting = get_object_or_404(GuidelineVoting, project=project, status='voting')
-        voting.status = 'completed'
-        voting.save()
-        return voting
-    
-    def create(self, request, *args, **kwargs):
-        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
-        voting = get_object_or_404(GuidelineVoting, project=project, status='voting')
+        return get_object_or_404(
+            GuidelineVoting, 
+            project=project, 
+            status='voting'
+        )
+
+    def patch(self, request, *args, **kwargs):
+        voting = self.get_object()
         
-        # End voting
+        # End current voting
         voting.status = 'completed'
         voting.save_guideline_snapshot()
         voting.save()
 
-        # Create new discussion if agreement not met
-        total_votes = voting.agree_count + voting.disagree_count
-        if total_votes > 0 and (voting.agree_count / total_votes) < 0.7:  # 70% threshold
-            Discussion.objects.filter(project=project, is_active=True).update(is_active=False)
-            new_discussion = Discussion.objects.create(
-                project=project,
-                title="Follow-up Discussion",
-                description="Continued discussion for unresolved guidelines",
-                is_active=True
-            )
-            GuidelineVoting.objects.create(
-                project=project,
-                current_discussion=new_discussion,
-                status='not_started',
-                guidelines_snapshot=project.guideline
+        # Close current discussion
+        Discussion.objects.filter(project=voting.project, is_active=True).update(is_active=False)
+        
+        serializer = self.get_serializer(voting)
+        return Response(serializer.data)
+        
+class CreateFollowUpVotingView(generics.CreateAPIView):
+    serializer_class = VotingSessionSerializer
+    permission_classes = [IsAuthenticated & IsProjectAdmin]
+
+    def create(self, request, *args, **kwargs):
+        project = get_object_or_404(Project, pk=self.kwargs['project_id'])
+        previous_voting = project.voting_sessions.order_by('-created_at').first()
+        
+        if not previous_voting or previous_voting.status != 'completed':
+            return Response(
+                {"detail": "No completed voting session found."},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response(self.get_serializer(voting).data)
+        # Create new discussion
+        new_discussion = Discussion.objects.create(
+            project=project,
+            title="Follow-up Discussion",
+            description="Continued discussion for unresolved guidelines",
+            is_active=True
+        )
+        
+        # Create new voting session
+        voting = GuidelineVoting.objects.create(
+            project=project,
+            current_discussion=new_discussion,
+            previous_voting=previous_voting,
+            status='not_started',
+            guidelines_snapshot=project.guideline
+        )
+
+        return Response(self.get_serializer(voting).data, status=status.HTTP_201_CREATED)

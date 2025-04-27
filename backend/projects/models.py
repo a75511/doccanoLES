@@ -340,8 +340,9 @@ class DiscussionComment(models.Model):
         ordering = ['created_at']
 
 class GuidelineVoting(models.Model):
-    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='voting')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='voting_sessions')  # Changed from OneToOne
     current_discussion = models.ForeignKey(Discussion, on_delete=models.SET_NULL, null=True, blank=True)
+    previous_voting = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)  # For history tracking
     status = models.CharField(
         max_length=20,
         choices=(
@@ -352,6 +353,10 @@ class GuidelineVoting(models.Model):
         default='not_started'
     )
     guidelines_snapshot = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Add creation date
+
+    class Meta:
+        ordering = ['-created_at']  # Newest first
 
     def save_guideline_snapshot(self):
         """Save current project guideline as snapshot when voting ends"""

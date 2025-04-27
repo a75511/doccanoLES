@@ -18,6 +18,8 @@ export default {
     voted_at: 'Voted At',
     start_voting: 'Start Voting',
     end_voting: 'End Voting',
+    create_follow_up: 'Create Follow-up Voting Session',
+    follow_up_created: 'Follow-up voting session created successfully!',
     started_success: 'Voting session started successfully!',
     ended_success: 'Voting session ended successfully!',
     vote_submitted: 'Your vote has been submitted!',

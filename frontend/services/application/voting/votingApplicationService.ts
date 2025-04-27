@@ -35,4 +35,12 @@ export class VotingApplicationService {
       throw new Error(e.response?.data?.detail || 'Failed to end voting session.');
     }
   }
+
+  public async createFollowUp(projectId: string): Promise<GuidelineVotingItem> {
+    try {
+      return await this.repository.createFollowUp(projectId);
+    } catch (e: any) {
+      throw new Error(e.response?.data?.detail || 'Failed to create follow-up voting session.');
+    }
+  }
 }

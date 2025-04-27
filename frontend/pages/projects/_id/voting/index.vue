@@ -135,6 +135,15 @@
               >
                 {{ $t('voting.end_voting') }}
               </v-btn>
+
+              <v-btn
+v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreementPercentage < 70"
+                color="secondary"
+                :loading="isCreatingFollowUp"
+                @click="createFollowUp"
+              >
+                {{ $t('voting.create_follow_up') }}
+              </v-btn>
             </v-card-actions>
           </v-card>
         </v-col>
@@ -197,10 +206,10 @@
         isStartingVoting: false,
         isSubmittingVote: false,
         isEndingVoting: false,
+        isCreatingFollowUp: false,
         errorMessage: '',
         successMessage: '',
         voteHeaders: [
-          { text: this.$t('voting.member'), value: 'username' },
           { text: this.$t('voting.vote'), value: 'agrees' },
           { text: this.$t('voting.voted_at'), value: 'votedAt' },
         ],
@@ -239,12 +248,12 @@
       },
   
       hasVoted(): boolean {
-        return this.votingStatus?.votes?.some(v => v.memberId === this.userId) || false
+        return this.votingStatus?.votes?.some(v => v.userId === this.userId) || false
       },
   
       formattedStatus(): string {
         return this.votingStatus 
-          ? this.$t(`voting.status.${this.votingStatus.status}`)
+          ? String(this.$t(`voting.status.${this.votingStatus.status}`))
           : ''
       },
   
@@ -264,14 +273,14 @@
   
     methods: {
       async loadVotingData() {
-        try {
-          this.isLoading = true
-          this.votingStatus = await this.$services.voting.getVotingStatus(this.projectId)
-        } catch (error) {
-          this.handleError(error, 'Failed to load voting data')
-        } finally {
-          this.isLoading = false
-        }
+          try {
+              this.isLoading = true
+              this.votingStatus = await this.$services.voting.getVotingStatus(this.projectId)
+          } catch (error) {
+              this.handleError(error, 'Failed to load voting data')
+          } finally {
+              this.isLoading = false
+          }
       },
   
       async handleVotingAction(action: Function, successKey: string) {
@@ -312,6 +321,19 @@
         );
       },
   
+      async createFollowUp() {
+        try {
+          this.isCreatingFollowUp = true
+          await this.$services.voting.createFollowUp(this.projectId)
+          this.showSuccess('voting.follow_up_created')
+          await this.loadVotingData()
+        } catch (error) {
+          this.handleError(error, 'Failed to create follow-up voting')
+        } finally {
+          this.isCreatingFollowUp = false
+        }
+      },
+
       formatDate(dateString: string) {
         return new Date(dateString).toLocaleString();
       },
@@ -321,7 +343,7 @@
       },
   
       showSuccess(messageKey: string) {
-        this.successMessage = this.$t(messageKey);
+        this.successMessage = String(this.$t(messageKey));
         setTimeout(() => {this.successMessage = ''}, 3000);
       }
     },
