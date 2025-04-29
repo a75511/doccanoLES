@@ -330,14 +330,19 @@ class Discussion(models.Model):
         ]
 
 class DiscussionComment(models.Model):
-    discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE, related_name='comments')
+    discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE)
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    temp_id = models.BigIntegerField(null=True, blank=True)
+    is_synced = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['temp_id']),
+            models.Index(fields=['is_synced'])
+        ]
 
 class GuidelineVoting(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='voting_sessions')  # Changed from OneToOne

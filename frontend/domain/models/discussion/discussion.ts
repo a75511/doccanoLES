@@ -17,6 +17,7 @@ export class DiscussionCommentItem {
       readonly member: number,
       readonly username: string,
       readonly createdAt: string,
-      readonly updatedAt: string
+      readonly updatedAt: string,
+      readonly temp_id?: number
     ) {}
   }

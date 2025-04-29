@@ -1,5 +1,5 @@
 import { Plugin } from '@nuxt/types'
-import { repositories } from './repositories'
+import { getRepositories } from './repositories'
 import { ExampleApplicationService } from '@/services/application/example/exampleApplicationService'
 import { LabelApplicationService } from '@/services/application/label/labelApplicationService'
 import { OptionApplicationService } from '@/services/application/option/optionApplicationService'
@@ -41,7 +41,8 @@ declare module 'vue/types/vue' {
   }
 }
 
-const plugin: Plugin = (_, inject) => {
+const plugin: Plugin = (context, inject) => {
+  const repositories = getRepositories(context)
   const services: Services = {
     categoryType: new LabelApplicationService(repositories.categoryType),
     spanType: new LabelApplicationService(repositories.spanType),
