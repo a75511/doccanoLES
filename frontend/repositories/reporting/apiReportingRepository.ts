@@ -32,16 +32,8 @@ export class APIReportingRepository {
 
     const response = await this.request.get(`/projects/${projectId}/reporting/disagreements?${params}`) as {
       data: {
-        total_examples: number,
-        conflict_count: number,
-        attribute_distributions: {
-          attribute: string,
-          total_members: number,
-          data: {
-            value: string,
-            count: number
-          }[];
-        }[],
+        total_examples: number
+        conflict_count: number
         label_distributions: {
           attribute: string
           descriptions: {
