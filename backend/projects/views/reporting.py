@@ -35,20 +35,21 @@ class ReportingView(APIView):
             if perspective_attributes:
                 query &= Q(attribute__name__in=perspective_attributes)
             
-            member_descriptions = MemberAttributeDescription.objects.filter(query)\
-                .select_related('attribute', 'member__user')\
-                .prefetch_related('attribute__options')
-
-            # 1. Calculate conflict statistics
             examples = project.examples.annotate(
                 num_annotators=Count('states__confirmed_by', distinct=True)
-            ).filter(num_annotators__gt=1).prefetch_related('states__confirmed_by')
-            
-            total_examples = examples.count()
+            ).filter(num_annotators__gt=1)
+
+            # Add member filtering to the states
+            if members:
+                examples = examples.filter(states__confirmed_by__in=members_qs.values('user'))
+
+            total_examples = examples.distinct().count()
             conflict_count = 0
             
             for example in examples:
                 states = example.states.all()
+                if members:  # Apply member filter to states
+                    states = states.filter(confirmed_by__in=members_qs.values('user'))
                 annotations = []
                 for state in states:
                     # Extract annotations from labels (e.g., categories, spans)
@@ -61,32 +62,6 @@ class ReportingView(APIView):
                 
                 if len(set(map(str, annotations))) > 1:
                     conflict_count += 1
-
-            # 2. Calculate attribute distributions
-            attribute_distributions = defaultdict(lambda: defaultdict(int))
-            
-            for member in members_qs:
-                attributes = {
-                    desc.attribute.name: desc.description
-                    for desc in member_descriptions.filter(member=member)
-                    if not perspective_attributes or desc.attribute.name in perspective_attributes
-                }
-                
-                for attr_name, attr_value in attributes.items():
-                    attribute_distributions[attr_name][attr_value] += 1
-
-            # Format attribute distributions
-            formatted_distributions = []
-            for attr_name, values in attribute_distributions.items():
-                total = sum(values.values())
-                formatted_distributions.append({
-                    'attribute': attr_name,
-                    'total_members': total,
-                    'data': [{
-                        'value': value, 
-                        'count': count
-                    } for value, count in values.items()]
-                })
 
             label_distributions = []
             if perspective_attributes and descriptions and labels:
@@ -138,7 +113,6 @@ class ReportingView(APIView):
             response_data = {
                 'total_examples': total_examples,
                 'conflict_count': conflict_count,
-                'attribute_distributions': formatted_distributions,
                 'label_distributions': label_distributions
             }
             

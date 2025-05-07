@@ -45,6 +45,9 @@
               :key="comment.id"
               class="comment-item"
             >
+            <v-chip v-if="comment.temp_id" small color="grey" class="mr-2">
+              Offline
+            </v-chip>
             <v-list-item-avatar>
               <div 
                 class="member-avatar"
@@ -154,7 +157,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { mdiPencil, mdiDelete, mdiCheck, mdiAccountCircle } from '@mdi/js'
+import { mdiPencil, mdiDelete, mdiCheck } from '@mdi/js'
 import { DiscussionItem, DiscussionCommentItem } from '@/domain/models/discussion/discussion'
 
 export default Vue.extend({
@@ -170,12 +173,10 @@ export default Vue.extend({
       editingCommentId: null as number | null,
       editText: '',
       isPosting: false,
-      pollInterval: null as NodeJS.Timeout | null,
       showDeleteDialog: false,
       commentToDelete: null as DiscussionCommentItem | null,
       successMessage: '',
       errorMessage: '',
-      mdiAccountCircle,
       mdiPencil,
       mdiDelete,
       mdiCheck,
@@ -197,16 +198,78 @@ export default Vue.extend({
   },
 
   mounted() {
-    this.pollInterval = setInterval(this.loadComments, 5000)
+    this.setupRealtimeListeners()
+    window.addEventListener('online', this.handleOnlineStatus)
   },
 
   beforeDestroy() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval)
-    }
+    window.removeEventListener('online', this.handleOnlineStatus)
+    this.$services.discussion.off('comment-created', this.handleNewComment)
+    this.$services.discussion.off('comment-updated', this.handleUpdatedComment)
+    this.$services.discussion.off('comment-deleted', this.handleDeletedComment)
+    this.$services.discussion.off('cache-error', this.handleCacheError)
   },
 
   methods: {
+    setupRealtimeListeners() {
+      this.$services.discussion.on('comment-created', this.handleNewComment)
+      this.$services.discussion.on('comment-updated', this.handleUpdatedComment)
+      this.$services.discussion.on('comment-deleted', this.handleDeletedComment)
+      this.$services.discussion.on('cache-error', this.handleCacheError)
+    },
+    handleNewComment(comment: DiscussionCommentItem) {
+      // Check if temp comment exists
+      const tempIndex = this.comments.findIndex(c => c.temp_id === comment.temp_id)
+      if (tempIndex >= 0) {
+        // Replace temp comment with real one
+        this.comments.splice(tempIndex, 1, comment)
+      } else {
+        // Add new comment
+        this.comments = [comment, ...this.comments]
+      }
+    },
+
+    handleUpdatedComment(updatedComment: DiscussionCommentItem) {
+      const index = this.comments.findIndex(c => c.id === updatedComment.id)
+      if (index >= 0) {
+        this.comments.splice(index, 1, updatedComment)
+      }
+    },
+
+    handleDeletedComment(commentId: number) {
+      this.comments = this.comments.filter(c => c.id !== commentId)
+    },
+
+    handleCacheError(error: Error) {
+      this.errorMessage = `Sync failed: ${error.message}`
+      setTimeout(() => { this.errorMessage = '' }, 5000)
+    },
+
+    async handleOnlineStatus() {
+      try {
+        await this.$services.discussion.syncCache(this.$route.params.id)
+        await this.loadComments()
+        this.successMessage = 'Offline changes synced successfully'
+        setTimeout(() => { this.successMessage = '' }, 3000)
+      } catch (error) {
+        this.handleError(error, 'sync comments')
+      }
+    },
+
+    handleError(error: any, context: string) {
+      if (error.message.includes('offline') || error.message.includes('locally')) {
+        this.errorMessage = `${error.message}`
+      } else if (error.response?.data?.error) {
+        this.errorMessage = error.response.data.error
+      } else if (error.response?.data?.detail) {
+        this.errorMessage = error.response.data.detail
+      } else if (error instanceof Error) {
+        this.errorMessage = error.message
+      } else {
+        this.errorMessage = `Failed to ${context}. Please try again.`
+      }
+      setTimeout(() => { this.errorMessage = '' }, 5000)
+    },
     async loadDiscussion() {
       try {
         this.discussion = await this.$services.discussion.getActiveDiscussion(this.$route.params.id)
@@ -313,19 +376,6 @@ export default Vue.extend({
         this.commentToDelete = null
       }
     },
-
-    handleError(error: any, context: string) {
-      if (error.response?.data?.error) {
-        this.errorMessage = error.response.data.error
-      } else if (error.response?.data?.detail) {
-        this.errorMessage = error.response.data.detail
-      } else if (error instanceof Error) {
-        this.errorMessage = error.message
-      } else {
-        this.errorMessage = `Failed to ${context}. Please try again.`
-      }
-      setTimeout(() => { this.errorMessage = '' }, 3000)
-    }
   }
 })
 </script>

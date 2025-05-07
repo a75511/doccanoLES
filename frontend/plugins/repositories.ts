@@ -29,6 +29,7 @@ import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories
 import { APIDiscussionRepository } from '~/repositories/discussion/apiDiscussionRepository'
 import { APIReportingRepository } from '~/repositories/reporting/apiReportingRepository'
 import { APIVotingRepository } from '~/repositories/voting/apiVotingRepository'
+import ApiService from '~/services/api.service'
 
 export interface Repositories {
   // User
@@ -87,60 +88,57 @@ declare module 'vue/types/vue' {
   }
 }
 
-const repositories: Repositories = {
-  // User
-  auth: new APIAuthRepository(),
-  user: new APIUserRepository(),
+let repositoriesInstance: Repositories | null = null
 
-  // Project
-  project: new APIProjectRepository(),
-  member: new APIMemberRepository(),
-  role: new APIRoleRepository(),
-  tag: new APITagRepository(),
-  perspective: new APIPerspectiveRepository(),
-  discussion: new APIDiscussionRepository(),
-  reporting: new APIReportingRepository(),
-  voting: new APIVotingRepository(),
-
-  // Example
-  example: new APIExampleRepository(),
-  comment: new APICommentRepository(),
-  taskStatus: new APITaskStatusRepository(),
-  metrics: new APIMetricsRepository(),
-  option: new LocalStorageOptionRepository(),
-  assignment: new APIAssignmentRepository(),
-  analysis: new APIAnalysisRepository(),
-  disagreement: new APIDisagreementRepository(),
-
-  // Auto Labeling
-  config: new APIConfigRepository(),
-  template: new APITemplateRepository(),
-
-  // Upload
-  catalog: new APICatalogRepository(),
-  parse: new APIParseRepository(),
-
-  // Download
-  downloadFormat: new APIDownloadFormatRepository(),
-  download: new APIDownloadRepository(),
-
-  // Label Type
-  categoryType: new APILabelRepository('category-type'),
-  spanType: new APILabelRepository('span-type'),
-  relationType: new APILabelRepository('relation-type'),
-
-  // Label
-  category: new APICategoryRepository(),
-  span: new APISpanRepository(),
-  relation: new APIRelationRepository(),
-  textLabel: new APITextLabelRepository(),
-  boundingBox: new APIBoundingBoxRepository(),
-  segmentation: new APISegmentationRepository()
+export function getRepositories(context?: any): Repositories {
+  if (!repositoriesInstance && context) {
+    repositoriesInstance = {
+      auth: new APIAuthRepository(),
+      user: new APIUserRepository(),
+      project: new APIProjectRepository(),
+      member: new APIMemberRepository(),
+      role: new APIRoleRepository(),
+      tag: new APITagRepository(),
+      perspective: new APIPerspectiveRepository(),
+      discussion: new APIDiscussionRepository(
+        ApiService,
+        new APIMemberRepository(),
+        context.store
+      ),
+      reporting: new APIReportingRepository(),
+      voting: new APIVotingRepository(),
+      example: new APIExampleRepository(),
+      comment: new APICommentRepository(),
+      taskStatus: new APITaskStatusRepository(),
+      metrics: new APIMetricsRepository(),
+      option: new LocalStorageOptionRepository(),
+      assignment: new APIAssignmentRepository(),
+      analysis: new APIAnalysisRepository(),
+      disagreement: new APIDisagreementRepository(),
+      config: new APIConfigRepository(),
+      template: new APITemplateRepository(),
+      catalog: new APICatalogRepository(),
+      parse: new APIParseRepository(),
+      downloadFormat: new APIDownloadFormatRepository(),
+      download: new APIDownloadRepository(),
+      categoryType: new APILabelRepository('category-type'),
+      spanType: new APILabelRepository('span-type'),
+      relationType: new APILabelRepository('relation-type'),
+      category: new APICategoryRepository(),
+      span: new APISpanRepository(),
+      relation: new APIRelationRepository(),
+      textLabel: new APITextLabelRepository(),
+      boundingBox: new APIBoundingBoxRepository(),
+      segmentation: new APISegmentationRepository()
+    }
+  }
+  return repositoriesInstance!
 }
 
-const plugin: Plugin = (_, inject) => {
-  inject('repositories', repositories)
+const plugin: Plugin = (context, inject) => {
+  const repos = getRepositories(context)
+  inject('repositories', repos)
 }
 
 export default plugin
-export { repositories }
+export type { Repositories as RepositoriesType }

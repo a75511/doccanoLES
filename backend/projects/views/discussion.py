@@ -1,10 +1,15 @@
 from rest_framework import generics
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
-
 from projects.models import Discussion, DiscussionComment, Member
 from projects.serializers import DiscussionSerializer, DiscussionCommentSerializer
 from projects.permissions import IsCommentAuthor, IsProjectMember
+
+class CommentPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
 
 class ActiveDiscussionDetail(generics.RetrieveAPIView):
     serializer_class = DiscussionSerializer
@@ -12,15 +17,21 @@ class ActiveDiscussionDetail(generics.RetrieveAPIView):
 
     def get_object(self):
         project_id = self.kwargs['project_id']
-        return get_object_or_404(Discussion, project_id=project_id, is_active=True)
+        return cache.get_or_set(
+            f'discussion_{project_id}',
+            lambda: Discussion.objects.get(project_id=project_id, is_active=True),
+            300  # Cache for 5 minutes
+        )
 
 class CommentListCreate(generics.ListCreateAPIView):
     serializer_class = DiscussionCommentSerializer
+    pagination_class = CommentPagination
     permission_classes = [IsAuthenticated & IsProjectMember]
 
     def get_queryset(self):
-        discussion = get_object_or_404(Discussion, project_id=self.kwargs['project_id'], is_active=True)
-        return DiscussionComment.objects.filter(discussion=discussion).order_by('-created_at')
+        return DiscussionComment.objects.filter(
+            discussion__project_id=self.kwargs['project_id']
+        ).select_related('member__user').order_by('-created_at')
 
     def perform_create(self, serializer):
         discussion = get_object_or_404(Discussion, project_id=self.kwargs['project_id'], is_active=True)
