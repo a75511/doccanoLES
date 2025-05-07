@@ -26,6 +26,7 @@ class Me(APIView):
         return Response(serializer.data)
 
 class UserList(generics.ListCreateAPIView): 
+    queryset = User.objects.all()
     serializer_class = UserPolymorphicSerializer
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
     search_fields = ("username", "email")
@@ -45,7 +46,7 @@ class UserList(generics.ListCreateAPIView):
         if not self.request.user.is_staff:
             return queryset.filter(id=self.request.user.id)
 
-        queryset = queryset.filter(userdata__created_by=self.request.user)
+        queryset = queryset.filter(userdata__created_by=self.request.user) | User.objects.filter(id=self.request.user.id)
  
         search_query = self.request.query_params.get('q', None)
         if search_query:
@@ -74,7 +75,7 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
         if not self.request.user.is_superuser:
             return queryset.filter(id=self.request.user.id)
         # Admins can only access users they created
-        return queryset.filter(userdata__created_by=self.request.user)
+        return queryset.filter(userdata__created_by=self.request.user) | User.objects.filter(id=self.request.user.id)
 
 class CustomUserCreateView(APIView):
     permission_classes = [IsAuthenticated & IsSuperUser]

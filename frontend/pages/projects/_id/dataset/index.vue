@@ -8,8 +8,8 @@
         @assign="dialogAssignment = true"
         @reset="dialogReset = true"
         @conflicts="dialogConflicts = true"
-        @lock="lockProject"
-        @unlock="unlockProject"
+        @lock="dialogLock = true"
+        @unlock="dialogUnlock = true"
       />
       <v-btn
         class="text-capitalize ms-2"
@@ -52,6 +52,21 @@
           @compare="redirectToConflictsPage"
         />
     </v-dialog>
+    <v-dialog v-model="dialogLock">
+        <form-lock-confirm
+          :is-locked="false"
+          @cancel="dialogLock = false"
+          @confirm="lockProject"
+        />
+      </v-dialog>
+      
+      <v-dialog v-model="dialogUnlock">
+        <form-lock-confirm
+          :is-locked="true"
+          @cancel="dialogUnlock = false"
+          @confirm="unlockProject"
+        />
+      </v-dialog>
     </v-card-title>
     <image-list
       v-if="project.isImageProject"
@@ -106,6 +121,7 @@ import FormAssignment from '~/components/example/FormAssignment.vue'
 import FormDelete from '@/components/example/FormDelete.vue'
 import FormDeleteBulk from '@/components/example/FormDeleteBulk.vue'
 import FormResetAssignment from '~/components/example/FormResetAssignment.vue'
+import FormLockConfirm from '~/components/example/FormLockConfirm.vue'
 import ActionMenu from '~/components/example/ActionMenu.vue'
 import AudioList from '~/components/example/AudioList.vue'
 import ImageList from '~/components/example/ImageList.vue'
@@ -125,7 +141,8 @@ export default Vue.extend({
     FormDelete,
     FormDeleteBulk,
     FormResetAssignment,
-    FormConflicts
+    FormConflicts,
+    FormLockConfirm
   },
 
   layout: 'project',
@@ -143,6 +160,8 @@ export default Vue.extend({
       dialogAssignment: false,
       dialogReset: false,
       dialogConflicts: false,
+      dialogLock: false,
+      dialogUnlock: false,
       item: {} as ExampleListDTO,
       selected: [] as ExampleDTO[],
       members: [] as MemberItem[],
@@ -263,8 +282,10 @@ export default Vue.extend({
     await this.$services.project.lock(parseInt(this.projectId))
     // Refresh the project data after locking
     await this.$store.dispatch('projects/setCurrentProject', this.projectId)
+    this.dialogLock = false
   } catch (error) {
     console.error('Failed to lock project:', error)
+    this.dialogLock = false
   }
 },
 
@@ -273,8 +294,10 @@ async unlockProject() {
     await this.$services.project.unlock(parseInt(this.projectId))
     // Refresh the project data after unlocking
     await this.$store.dispatch('projects/setCurrentProject', this.projectId)
+    this.dialogUnlock = false
   } catch (error) {
     console.error('Failed to unlock project:', error)
+    this.dialogUnlock = false
   }
 }
   }
