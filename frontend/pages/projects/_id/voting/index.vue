@@ -67,10 +67,11 @@
                         :rotate="-90"
                         :size="150"
                         :width="15"
-                        :value="votingStatus.agreementPercentage"
+                        :value="votingStatus.agreeCount / votingStatus.votes.length * 100"
                         color="success"
+                        
                       >
-                        {{ votingStatus.agreementPercentage }}%
+                        {{ votingStatus.agreeCount / votingStatus.votes.length*100 }}%
                       </v-progress-circular>
                       <div class="mt-2">{{ $t('voting.agreement') }}</div>
                     </v-col>
@@ -85,17 +86,7 @@
                       </div>
                     </v-col>
                   </v-row>
-                </div>
-  
-                <div v-else>
-                  <v-alert type="info">
-                    {{ $t('voting.not_started') }}
-                  </v-alert>
-                </div>
-  
-                <v-divider class="my-4"></v-divider>
-  
-                <v-subheader>{{ $t('voting.votes') }}</v-subheader>
+                  <v-subheader>{{ $t('voting.votes') }}</v-subheader>
                 <v-data-table
                   :headers="voteHeaders"
                   :items="votingStatus.votes"
@@ -112,6 +103,16 @@
                     {{ formatDate(item.votedAt) }}
                   </template>
                 </v-data-table>
+                </div>
+  
+                <div v-else>
+                  <v-alert type="info">
+                    {{ $t('voting.not_started') }}
+                  </v-alert>
+                </div>
+  
+                <v-divider class="my-4"></v-divider>
+  
               </template>
   
               <v-skeleton-loader v-else type="article, actions"></v-skeleton-loader>
@@ -276,8 +277,10 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           try {
               this.isLoading = true
               this.votingStatus = await this.$services.voting.getVotingStatus(this.projectId)
+              console.log(this.votingStatus)
           } catch (error) {
-              this.handleError(error, 'Failed to load voting data')
+              // this.handleError(error, 'Failed to load voting data')
+              this.handleError(error, 'Database Unavailable. Please try again later.')
           } finally {
               this.isLoading = false
           }
@@ -290,7 +293,8 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           this.votingStatus = result;
           this.showSuccess(successKey);
         } catch (error) {
-          this.handleError(error, 'Operation failed');
+          // this.handleError(error, 'Operation failed');
+          this.handleError(error, 'Database Unavailable. Please try again later.')
         }
       },
   
@@ -308,7 +312,8 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           this.showSuccess('voting.vote_submitted');
           await this.loadVotingData();
         } catch (error) {
-          this.handleError(error, 'Failed to submit vote');
+          // this.handleError(error, 'Failed to submit vote');
+          this.handleError(error, 'Database Unavailable. Please try again later.')
         } finally {
           this.isSubmittingVote = false;
         }
@@ -328,7 +333,8 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           this.showSuccess('voting.follow_up_created')
           await this.loadVotingData()
         } catch (error) {
-          this.handleError(error, 'Failed to create follow-up voting')
+          // this.handleError(error, 'Failed to create follow-up voting')
+          this.handleError(error, 'Database Unavailable. Please try again later.')
         } finally {
           this.isCreatingFollowUp = false
         }

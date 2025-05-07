@@ -68,20 +68,12 @@ export default Vue.extend({
         },
         {
           id: 2,
-          name: 'Annotation Statistics',
-          description: 'Annotation progress and distribution metrics',
-          reportType: 'annotation',
-          lastGenerated: '2024-03-14',
-          route: 'annotations' // Just the endpoint part
+          name: 'Disagreement Report',
+          description: 'Report of annotator disagreements without charts',
+          reportType: 'disagreement',
+          lastGenerated: '2024-03-16',
+          route: 'disagreements-report'
         },
-        {
-          id: 3,
-          name: 'Perspective Analysis',
-          description: 'Attribute usage and completion rates by perspective',
-          reportType: 'perspective',
-          lastGenerated: '2024-03-13',
-          route: 'perspectives' // Just the endpoint part
-        }
       ]
     }
   },

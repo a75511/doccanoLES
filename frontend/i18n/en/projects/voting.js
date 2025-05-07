@@ -5,7 +5,7 @@ export default {
       voting: 'Voting',
       completed: 'Completed'
     },
-    current_guidelines: 'Current Guidelines',
+    current_guidelines: 'Proposed Guidelines',
     cast_your_vote: 'Cast Your Vote',
     agree: 'Agree',
     disagree: 'Disagree',
