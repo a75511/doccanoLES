@@ -1,4 +1,3 @@
-<!-- pages/projects/_id/voting/index.vue -->
 <template>
     <div>
   
@@ -27,38 +26,54 @@
                   <div class="guidelines-preview pa-4 mb-4"
                   style="white-space: pre-wrap;"
                   v-html="project.guideline"></div>
-  
+
                   <v-subheader>{{ $t('voting.cast_your_vote') }}</v-subheader>
                   <div class="d-flex justify-center my-4">
                     <v-btn
                       x-large
-                      color="success"
+                      :color="selectedVote === true ? 'success' : ''"
                       :disabled="hasVoted || isLoading"
-                      :loading="isSubmittingVote"
-                      @click="submitVote(true)"
+                      @click="selectVote(true)"
                     >
                       <v-icon left>{{ mdiCheckBold }}</v-icon>
                       {{ $t('voting.agree') }}
                     </v-btn>
-  
+
                     <v-btn
                       x-large
-                      color="error"
+                      :color="selectedVote === false ? 'error' : ''"
                       class="ml-4"
                       :disabled="hasVoted || isLoading"
-                      :loading="isSubmittingVote"
-                      @click="submitVote(false)"
+                      @click="selectVote(false)"
                     >
                       <v-icon left>{{ mdiCloseThick }}</v-icon>
                       {{ $t('voting.disagree') }}
                     </v-btn>
                   </div>
-  
+
+                  <div v-if="selectedVote !== null" class="text-center">
+                    <v-btn
+                      color="primary"
+                      :disabled="hasVoted || isLoading"
+                      :loading="isSubmittingVote"
+                      @click="submitVote"
+                      class="mt-4"
+                    >
+                      {{ $t('voting.confirm_vote') }}
+                    </v-btn>
+                    <v-btn
+                      text
+                      @click="clearSelection"
+                      class="mt-4 ml-2"
+                    >
+                      {{ $t('voting.clear_selection') }}
+                    </v-btn>
+                  </div>
+
                   <v-alert v-if="hasVoted" type="info" class="mt-4">
                     {{ $t('voting.already_voted') }}
                   </v-alert>
                 </div>
-  
                 <div v-else-if="votingStatus.status === 'completed'">
                   <v-subheader>{{ $t('voting.results') }}</v-subheader>
                   <v-row class="my-4">
@@ -218,7 +233,8 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
         mdiCloseThick,
         mdiInformation,
         mdiVote,
-        projectState: {} as ReturnType<typeof useProjectItem>['state']
+        projectState: {} as ReturnType<typeof useProjectItem>['state'],
+        selectedVote: null as boolean | null,
       }
     },
   
@@ -273,6 +289,14 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
     },
   
     methods: {
+      selectVote(agrees: boolean) {
+        this.selectedVote = agrees;
+      },
+
+      clearSelection() {
+        this.selectedVote = null;
+      },
+
       async loadVotingData() {
           try {
               this.isLoading = true
@@ -305,19 +329,21 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
         );
       },
   
-      async submitVote(agrees: boolean) {
-        try {
-          this.isSubmittingVote = true;
-          await this.$services.voting.submitVote(this.projectId, agrees);
-          this.showSuccess('voting.vote_submitted');
-          await this.loadVotingData();
-        } catch (error) {
-          // this.handleError(error, 'Failed to submit vote');
-          this.handleError(error, 'Database Unavailable. Please try again later.')
-        } finally {
-          this.isSubmittingVote = false;
-        }
-      },
+      async submitVote() {
+    if (this.selectedVote === null) return;
+    
+    try {
+      this.isSubmittingVote = true;
+      await this.$services.voting.submitVote(this.projectId, this.selectedVote);
+      this.showSuccess('voting.vote_submitted');
+      await this.loadVotingData();
+      this.selectedVote = null;
+    } catch (error) {
+      this.handleError(error, 'Database Unavailable. Please try again later.');
+    } finally {
+      this.isSubmittingVote = false;
+    }
+  },
   
       async endVoting() {
         await this.handleVotingAction(
