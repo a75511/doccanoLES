@@ -7,15 +7,17 @@ export class ReportingApplicationService {
   async getDisagreementStatistics(
     projectId: string,
     filters: {
-      members?: number[],
       attributes?: string[],
-      labels?: string[],
       labelDescriptions?: string[],
+      view?: string
     } = {}
   ): Promise<DisagreementStatistics> {
     try {
       return await this.repository.getDisagreementStatistics(projectId, filters)
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e
+      }
       throw new Error(`Failed to get statistics: ${e.message}`)
     }
   }
@@ -27,6 +29,9 @@ export class ReportingApplicationService {
     try {
       return await this.repository.getAttributeDescriptions(projectId, attributes)
     } catch (e: any) {
+      if (e.response?.status === 500) {
+        throw e
+      }
       throw new Error(`Failed to get attribute descriptions: ${e.message}`)
     }
   }

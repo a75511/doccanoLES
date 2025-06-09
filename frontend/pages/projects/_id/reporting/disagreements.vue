@@ -2,19 +2,13 @@
   <v-container>
     <v-card>
       <v-toolbar color="primary" dark flat>
-        <v-toolbar-title>Disagreement Statistics</v-toolbar-title>
+        <v-toolbar-title>Annotation Statistics</v-toolbar-title>
         <v-spacer></v-spacer>
       </v-toolbar>
 
       <v-card-text class="grey lighten-4 py-2">
         <v-row align="center" no-gutters>
           <v-col cols="12" md="4">
-            <member-selector 
-              v-model="selectedMembers" 
-              :project-id="$route.params.id" 
-            />
-          </v-col>
-          <v-col cols="12" md="4" class="pl-md-2">
             <perspective-filter 
               v-model="selectedAttributes" 
               :project-id="$route.params.id" 
@@ -28,18 +22,26 @@
             />
           </v-col>
           <v-col cols="12" md="3" class="pl-md-2">
-            <label-filter 
-              v-model="selectedLabels"
-              :project-id="$route.params.id"
+            <v-select
+              v-model="viewType"
+              :items="viewTypes"
+              label="View Type"
+              clearable
             />
           </v-col>
           <v-col cols="12" md="3" class="pl-md-2">
             <export-filter v-model="selectedFormats" />
           </v-col>
-          <v-col cols="12" md="4" class="pl-md-2">
-            <v-btn color="primary" @click="applyFilters">
+          <v-col cols="12" md="2" class="pl-md-2">
+            <v-btn color="primary" @click="applyFilters" :loading="loading">
               <v-icon left>{{icons.refresh}}</v-icon>
-              Apply Filters
+              Apply
+            </v-btn>
+          </v-col>
+          <v-col cols="12" md="2" class="pl-md-2">
+            <v-btn color="secondary" @click="resetFilters">
+              <v-icon left>{{icons.close}}</v-icon>
+              Reset
             </v-btn>
           </v-col>
         </v-row>
@@ -52,69 +54,99 @@
 
         <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
 
-        <template v-if="!loading && stats && selectedFormats.includes('preview')">
-          <v-row justify="center">
-            <v-col cols="12" md="6">
-              <doughnut-chart
-                v-if="stats.total_examples > 0"
-                ref="pieChart"
-                :conflict-data="doughnutData"
-                title="Overall Agreement"
-              />
-            </v-col>
-          </v-row>
-
-          <template v-for="dist in labelDistributions">
-            <v-divider 
-            :key="`div-${dist.attribute}-${dist.description}-${dist.examples[0]?.example_id}`"
-             class="my-6"></v-divider>
-            <v-subheader :key="`subheader-${dist.attribute}`"  class="text-h4 primary--text">
-              {{ dist.attribute }} - {{ dist.description }}
-            </v-subheader>
-            
-            <v-row v-for="example in dist.examples"
-             :key="`${dist.attribute}-${dist.description}-${example.example_id}`">
-              <v-col cols="12" md="3">
-                <v-card outlined>
-                  <v-card-title>Text: {{ truncate(example.example_text, 50) }}</v-card-title>
-                  <v-card-text>
-                    Total Annotations: {{ exampleTotal(example) }}
-                  </v-card-text>
-                </v-card>
-              </v-col>
-              <v-col cols="12" md="9">
-                <doughnut-chart
-                  :distribution-data="formatChartData(example)"
-                  :example-name="example.example_text"
-                  :title="`${dist.attribute} Distribution`"
-                  :ref="`chart-${example.example_id}`"
-                />
-              </v-col>
-            </v-row>
+        <!-- Only show charts if data has been loaded AND Apply was clicked -->
+        <div>
+          <template v-if="!loading && stats && showResults && selectedFormats.includes('preview')">
+            <template v-for="(dist, index) in labelDistributions">
+              <v-divider :key="`div-${index}`" class="my-6"></v-divider>
+              <v-subheader :key="`subheader-${index}`" class="text-h4 primary--text">
+                {{ dist.attributes.join(', ') }} - {{ dist.descriptions.join(', ') }}
+              </v-subheader>
+              
+              <v-row v-for="(example, exIndex) in dist.examples"
+                :key="`example-${index}-${exIndex}`">
+                <v-col cols="12" md="3">
+                  <v-card outlined>
+                    <v-card-title>Text: {{ truncate(example.example_text, 50) }}</v-card-title>
+                    <v-card-text>
+                      <div>Total Annotators: {{ example.total }} / {{ dist.total_members }}</div>
+                      <div :class="agreementClass(example)">
+                        Agreement: {{ example.agreement_rate.toFixed(1) }}%
+                        <v-icon small>{{ agreementIcon(example) }}</v-icon>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="9">
+                  <doughnut-chart
+                    :distribution-data="formatChartData(example, dist.total_members)"
+                    :title="`${dist.attributes.join(', ')} Distribution`"
+                    :data-example-id="example.example_id"
+                  />
+                </v-col>
+              </v-row>
+            </template>
           </template>
-        </template>
+
+          <!-- Hidden charts container for PDF generation -->
+          <div class="hidden-charts-container" ref="hiddenChartsContainer">
+            <template v-if="stats && generateHiddenCharts">
+              <template v-for="(dist, index) in labelDistributions">
+                <div v-for="(example, exIndex) in dist.examples"
+                  :key="`hidden-example-${index}-${exIndex}`"
+                  class="hidden-chart-wrapper">
+                  <div class="chart-info">
+                    <h3>Example #{{ example.example_id }}</h3>
+                    <p>{{ truncate(example.example_text, 100) }}</p>
+                    <p :style="{ color: example.is_agreement ? '#4CAF50' : '#F44336' }">
+                      Agreement Rate: {{ example.agreement_rate.toFixed(1) }}% 
+                      ({{ example.is_agreement ? 'Agreement' : 'Disagreement' }})
+                    </p>
+                  </div>
+                  <doughnut-chart
+                    :distribution-data="formatChartData(example, dist.total_members)"
+                    :title="`${dist.attributes.join(', ')} Distribution`"
+                    :data-example-id="example.example_id"
+                  />
+                </div>
+              </template>
+            </template>
+          </div>
+
+          <!-- Move alerts to be direct siblings of the v-if template -->
+          <v-alert
+            v-if="!loading && showResults && (!stats || !stats.label_distributions.length)"
+            type="info"
+            class="ma-4"
+          >
+            No data available for the selected filters
+          </v-alert>
+
+          <v-alert
+            v-else-if="!loading && !showResults"
+            type="info"
+            class="ma-4"
+          >
+            Click "Apply" to load and display statistics
+          </v-alert>
+        </div>
       </v-card-text>
     </v-card>
   </v-container>
 </template>
 
 <script>
-import Vue from 'vue';
-import { mdiRefresh } from '@mdi/js'
+import { mdiRefresh, mdiClose } from '@mdi/js'
 import ExportFilter from '@/components/reporting/ExportFilter.vue'
-import MemberSelector from '@/components/reporting/MemberSelector.vue'
 import PerspectiveFilter from '@/components/reporting/PerspectiveFilter.vue'
 import DescriptionFilter from '@/components/reporting/DescriptionFilter.vue'
-import LabelFilter from '@/components/reporting/LabelFilter.vue'
 import DoughnutChart from '~/components/reporting/DoughnutChart.vue'
 
 export default {
   components: {
     ExportFilter,
-    MemberSelector,
     PerspectiveFilter,
     DoughnutChart,
-    LabelFilter,
     DescriptionFilter,
   },
 
@@ -124,32 +156,29 @@ export default {
   data() {
     return {
       stats: null,
-      selectedMembers: [],
       selectedAttributes: [],
       selectedDescriptions: [],
-      selectedLabels: [],
+      viewType: 'all',
+      viewTypes: [
+        { text: 'All', value: 'all' },
+        { text: 'Only Agreements', value: 'agreement' },
+        { text: 'Only Disagreements', value: 'disagreement' }
+      ],
       selectedFormats: [],
       loading: false,
       error: null,
+      showResults: false, // New flag to control when to show results
+      generateHiddenCharts: false, // Flag for hidden charts generation
       icons: {
-        refresh: mdiRefresh
+        refresh: mdiRefresh,
+        close: mdiClose,
       }
     }
   },
 
   computed: {
-    doughnutData() {
-      if (!this.stats) return { agreement: 0, conflict: 0 }
-      const total = this.stats.total_examples || 1
-      const conflictPercentage = (this.stats.conflict_count / total) * 100
-      return {
-        agreement: 100 - conflictPercentage,
-        conflict: conflictPercentage
-      }
-    },
     labelDistributions() {
-      if (!this.stats?.label_distributions) return []
-      return this.stats.label_distributions
+      return this.stats?.label_distributions || []
     }
   },
 
@@ -160,54 +189,106 @@ export default {
         const response = await this.$services.reporting.getDisagreementStatistics(
           this.$route.params.id,
           {
-            members: this.selectedMembers,
             attributes: this.selectedAttributes,
             descriptions: this.selectedDescriptions,
-            labels: this.selectedLabels
+            view: this.viewType
           }
         )
         this.stats = response
-      } catch (e) {
-        this.error = e.message || 'Failed to load statistics'
+      } catch (error) {
+        this.error = error.response?.data?.error || error.message
       } finally {
         this.loading = false
       }
     },
 
-    formatChartData(example) {
-      const total = example.labels.reduce((sum, item) => sum + item.count, 0)
-      return example.labels.map(item => ({
-        value: item.label,
-        count: item.count,
-        percentage: total > 0 ? (item.count / total * 100) : 0
-      }))
+    formatChartData(example, totalMembers) {
+      const chartData = [
+        ...example.labels.map(item => ({
+          value: `${item.label} (${item.count})`,
+          count: item.count,
+          percentage: (item.count / totalMembers * 100)
+        }))
+      ]
+
+      // Add non-annotated entry
+      if (example.non_annotated > 0) {
+        chartData.push({
+          value: `Not Annotated (${example.non_annotated})`,
+          count: example.non_annotated,
+          percentage: (example.non_annotated / totalMembers * 100)
+        })
+      }
+
+      return chartData
     },
-    exampleTotal(example) {
-      return example.labels.reduce((sum, item) => sum + item.count, 0)
-    },
+
     truncate(text, length) {
       return text?.length > length ? text.substr(0, length) + '...' : text
     },
 
     async applyFilters() {
       this.loading = true;
+      this.stats = null;
+      this.error = null;
+      this.showResults = false;
+      
       try {
+        // First load the data
         await this.loadData();
+        
+        // Set showResults to true so charts can render
+        this.showResults = true;
+        
+        // Wait for DOM to update and charts to render
+        await this.$nextTick();
+        
+        // If PDF is requested, generate hidden charts and wait for them to render
+        if (this.selectedFormats.includes('pdf')) {
+          this.generateHiddenCharts = true;
+          await this.$nextTick();
+          // Additional wait to ensure charts are fully rendered
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        // Handle exports after charts are ready
         if (this.selectedFormats.includes('csv')) {
           await this.exportCSV().catch(e => {
-        throw new Error(`CSV export failed: ${e.message}`);
-      });
+            throw new Error(`CSV export failed: ${e.message}`);
+          });
         }
+        
         if (this.selectedFormats.includes('pdf')) {
           await this.exportPDF().catch(e => {
-        throw new Error(`PDF export failed: ${e.message}`);
-      });
+            throw new Error(`PDF export failed: ${e.message}`);
+          });
+          // Clean up hidden charts after PDF generation
+          this.generateHiddenCharts = false;
         }
+        
       } catch (e) {
         this.error = e.message || 'Failed to apply filters';
+        this.showResults = false;
       } finally {
         this.loading = false;
       }
+    },
+
+    resetFilters() {
+      this.selectedAttributes = []
+      this.selectedDescriptions = []
+      this.selectedFormats = []
+      this.stats = null;
+      this.showResults = false;
+      this.generateHiddenCharts = false;
+    },
+
+    agreementClass(example) {
+      return example.is_agreement ? 'green--text' : 'red--text';
+    },
+
+    agreementIcon(example) {
+      return example.is_agreement ? 'mdi-check' : 'mdi-alert';
     },
 
     showError(message) {
@@ -218,29 +299,76 @@ export default {
     },
 
     exportCSV() {
-      return new Promise((resolve) => {
-        const conflictPercentage = (this.stats.conflict_count / this.stats.total_examples) * 100
-        const csvContent = [
-          ['Category', 'Attribute', 'Example Text', 'Label', 'Count', 'Percentage'],
-          ['Overall Agreement', '', '', this.stats.total_examples, '', 
-            `${(100 - conflictPercentage).toFixed(2)}%`
-          ],
-          ...this.labelDistributions.flatMap(dist => 
-            dist.examples.flatMap(example => 
-              example.labels.map(label => [
-                'Label Distribution',
-                dist.attribute,
-                example.example_text,
-                label.label,
-                label.count,
-                `${((label.count / this.exampleTotal(example)) * 100 || 0).toFixed(2)}%`
-              ])
-            )
-          )
-        ]
-        this.$export.exportCSV(csvContent, 'disagreement-statistics.csv')
-        resolve()
-      })
+      if (!this.stats) return;
+      
+      // Create CSV header with filter information
+      const csvData = [
+        { 'Report Type': 'Annotation Disagreement Report' },
+        {},
+        { 'Filters Applied': 'Values' },
+        { 'Attributes': this.selectedAttributes.join(', ') || 'None' },
+        { 'Descriptions': this.selectedDescriptions.join(', ') || 'None' },
+        { 'View Type': this.viewType || 'all' },
+        {},
+        { 'Overall Statistics': '' },
+        { 'Total Examples': this.stats.total_examples },
+        { 'Conflict Count': this.stats.conflict_count },
+        { 'Total Members': this.stats.total_members },
+        {},
+        {
+          'Group Attributes': 'Group Attributes',
+          'Group Descriptions': 'Group Descriptions',
+          'Example ID': 'Example ID',
+          'Example Text': 'Example Text',
+          'Label': 'Label',
+          'Count': 'Count',
+          'Percentage': 'Percentage',
+          'Total Annotators': 'Total Annotators',
+          'Non-Annotated': 'Non-Annotated',
+          'Agreement Rate': 'Agreement Rate',
+          'Is Agreement': 'Is Agreement'
+        }
+      ];
+
+      // Add detailed data
+      for (const dist of this.labelDistributions) {
+        for (const example of dist.examples) {
+          // Add example info row
+          csvData.push({
+            'Group Attributes': dist.attributes.join(', '),
+            'Group Descriptions': dist.descriptions.join(', '),
+            'Example ID': example.example_id,
+            'Example Text': example.example_text,
+            'Label': 'ALL LABELS',
+            'Count': '',
+            'Percentage': '',
+            'Total Annotators': example.total,
+            'Non-Annotated': example.non_annotated,
+            'Agreement Rate': example.agreement_rate.toFixed(1) + '%',
+            'Is Agreement': example.is_agreement ? 'Yes' : 'No'
+          });
+
+          // Add individual label rows
+          for (const label of example.labels) {
+            const percentage = ((label.count / dist.total_members) * 100).toFixed(1);
+            csvData.push({
+              'Group Attributes': '',
+              'Group Descriptions': '',
+              'Example ID': '',
+              'Example Text': '',
+              'Label': label.label,
+              'Count': label.count,
+              'Percentage': percentage + '%',
+              'Total Annotators': '',
+              'Non-Annotated': '',
+              'Agreement Rate': '',
+              'Is Agreement': ''
+            });
+          }
+        }
+      }
+
+      this.$export.exportCSV(csvData, `disagreement-statistics-${this.$route.params.id}.csv`);
     },
 
     async exportPDF() {
@@ -250,80 +378,74 @@ export default {
         const pageWidth = pdfDoc.internal.pageSize.getWidth();
         let yPosition = 20;
 
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'fixed';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.width = `${pageWidth}px`;
-        document.body.appendChild(tempDiv);
+        // Add report title
+        pdfDoc.setFontSize(18);
+        pdfDoc.text('Annotation Disagreement Report', pageWidth / 2, yPosition, { align: 'center' });
+        yPosition += 15;
 
-        const DoughnutChartConstructor = this.$options.components.DoughnutChart;
-        const DoughnutChart = Vue.extend(DoughnutChartConstructor);
-        const doughnutInstance = new DoughnutChart({
-          propsData: {
-            conflictData: this.doughnutData,
-            title: 'Overall Agreement',
-          },
-        });
-        const doughnutWrapper = document.createElement('div');
-        tempDiv.appendChild(doughnutWrapper);
-        doughnutInstance.$mount(doughnutWrapper);
+        // Add filter information
+        pdfDoc.setFontSize(12);
+        pdfDoc.text(`Filters Applied:`, 20, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• Attributes: ${this.selectedAttributes.join(', ') || 'None'}`, 25, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• Descriptions: ${this.selectedDescriptions.join(', ') || 'None'}`, 25, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• View Type: ${this.viewType}`, 25, yPosition);
+        yPosition += 15;
 
-        const chartInstances = [];
-        for (const distribution of this.labelDistributions) {
-          for (const example of distribution.examples) {
-            const ChartComponent = Vue.extend(DoughnutChartConstructor);
-            const instance = new ChartComponent({
-              propsData: {
-                distributionData: this.formatChartData(example),
-                title: `${distribution.attribute} Distribution`,
-              },
-            });
-            const wrapper = document.createElement('div');
-            tempDiv.appendChild(wrapper);
-            instance.$mount(wrapper);
-            chartInstances.push(instance);
+        // Add overall statistics
+        pdfDoc.text(`Overall Statistics:`, 20, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• Total Examples: ${this.stats.total_examples}`, 25, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• Conflict Count: ${this.stats.conflict_count}`, 25, yPosition);
+        yPosition += 8;
+        pdfDoc.text(`• Total Members: ${this.stats.total_members}`, 25, yPosition);
+        yPosition += 15;
+
+        // Use hidden charts container for PDF generation
+        const chartsContainer = this.$refs.hiddenChartsContainer;
+        const chartWrappers = chartsContainer.querySelectorAll('.hidden-chart-wrapper');
+        const html2canvas = (await import('html2canvas')).default;
+        
+        for (const wrapper of chartWrappers) {
+          // Check if we need a new page
+          if (yPosition > pdfDoc.internal.pageSize.getHeight() - 200) {
+            pdfDoc.addPage('landscape');
+            yPosition = 20;
           }
+          
+          // Capture the entire wrapper (including text info and chart)
+          const canvas = await html2canvas(wrapper, {
+            scale: 2,
+            backgroundColor: '#FFFFFF',
+            logging: false,
+            useCORS: true,
+            allowTaint: true
+          });
+          
+          // Add image to PDF
+          const imgData = canvas.toDataURL('image/png');
+          const imgWidth = 260;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          pdfDoc.addImage(
+            imgData,
+            'PNG',
+            (pageWidth - imgWidth) / 2,
+            yPosition,
+            imgWidth,
+            imgHeight
+          );
+          
+          yPosition += imgHeight + 20;
         }
-
-        await new Promise((resolve) => {
-          setTimeout(async () => {
-            const doughnutCanvas = await this.captureChartElement(doughnutInstance.$el);
-            if (doughnutCanvas) {
-              const imgWidth = pageWidth * 0.2;
-              const imgHeight = (doughnutCanvas.height * imgWidth) / doughnutCanvas.width;
-              pdfDoc.addImage(doughnutCanvas, 'PNG', (pageWidth - imgWidth) / 2, yPosition, imgWidth, imgHeight);
-              yPosition += imgHeight + 10;
-            }
-
-            for (const instance of chartInstances) {
-              const canvas = await this.captureChartElement(instance.$el);
-              if (canvas) {
-                const imgWidth = pageWidth * 0.2;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                if (yPosition + imgHeight > pdfDoc.internal.pageSize.getHeight() - 20) {
-                  pdfDoc.addPage();
-                  yPosition = 20;
-                }
-
-                pdfDoc.addImage(canvas, 'PNG', (pageWidth - imgWidth) / 2, yPosition, imgWidth, imgHeight);
-                yPosition += imgHeight + 10;
-              }
-            }
-
-            // Cleanup
-            tempDiv.remove();
-            doughnutInstance.$destroy();
-            chartInstances.forEach((instance) => instance.$destroy());
-            resolve();
-          }, 2000); // Allow time for chart rendering
-        });
-
+        
         pdfDoc.save(`disagreement-statistics-${this.$route.params.id}.pdf`);
       } catch (e) {
         console.error('PDF Export Error:', e);
         this.error = 'Failed to generate PDF. Please try again.';
-        throw e;
       }
     },
 
@@ -342,7 +464,7 @@ export default {
         return null
       }
     }
-  },
+  }
 }
 </script>
 
@@ -352,5 +474,34 @@ export default {
   border-radius: 4px;
   padding: 16px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.hidden-charts-container {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1200px; /* Sufficient width for landscape PDF */
+}
+
+.hidden-chart-wrapper {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.chart-info {
+  margin-bottom: 15px;
+}
+
+.chart-info h3 {
+  margin: 0 0 10px 0;
+  color: #1976D2;
+}
+
+.chart-info p {
+  margin: 5px 0;
+  font-size: 14px;
 }
 </style>

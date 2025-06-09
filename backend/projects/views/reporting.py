@@ -10,109 +10,178 @@ from rest_framework.permissions import IsAuthenticated
 
 from projects.models import Member, MemberAttributeDescription, Project
 from projects.permissions import IsProjectAdmin, IsAnnotationApprover
+from examples.models import Example
 
 class ReportingView(APIView):
     permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
 
     def get(self, request, project_id):
         try:
-            members = [int(m) for m in request.GET.getlist('members', [])]
             perspective_attributes = request.GET.getlist('attributes', [])
             descriptions = request.GET.getlist('descriptions', [])
-            labels = request.GET.getlist('labels', [])
+            view_type = request.GET.get('view', 'all')  # 'all', 'agreement', 'disagreement'
             
             project = Project.objects.get(pk=project_id)
-            
-            # Get relevant members
             members_qs = Member.objects.filter(project=project)
-            if members:
-                members_qs = members_qs.filter(id__in=members)
-            
-            # Get member attribute descriptions
-            query = Q(attribute__perspective__projects=project_id)
-            if members:
-                query &= Q(member_id__in=members)
-            if perspective_attributes:
-                query &= Q(attribute__name__in=perspective_attributes)
-            
+            total_members = members_qs.count()
+
+            # Get examples with multiple annotations
             examples = project.examples.annotate(
                 num_annotators=Count('states__confirmed_by', distinct=True)
             ).filter(num_annotators__gt=1)
 
-            # Add member filtering to the states
-            if members:
-                examples = examples.filter(states__confirmed_by__in=members_qs.values('user'))
-
             total_examples = examples.distinct().count()
             conflict_count = 0
             
+            # Conflict detection remains the same
             for example in examples:
                 states = example.states.all()
-                if members:  # Apply member filter to states
-                    states = states.filter(confirmed_by__in=members_qs.values('user'))
                 annotations = []
                 for state in states:
-                    # Extract annotations from labels (e.g., categories, spans)
-                    Category = apps.get_model('labels', 'Category')
-                    categories = Category.objects.filter(
-                        example=state.example,
-                        user=state.confirmed_by
-                    ).values_list('label__text', flat=True)
-                    annotations.append(sorted(categories))
+                    # Get member through user relationship
+                    try:
+                        member = Member.objects.get(project=project, user=state.confirmed_by)
+                        Category = apps.get_model('labels', 'Category')
+                        categories = Category.objects.filter(
+                            example=state.example,
+                            user=state.confirmed_by
+                        ).values_list('label__text', flat=True)
+                        annotations.append(sorted(categories))
+                    except Member.DoesNotExist:
+                        continue
                 
                 if len(set(map(str, annotations))) > 1:
                     conflict_count += 1
 
             label_distributions = []
-            if perspective_attributes and descriptions and labels:
-                desc_query = Q(attribute__name__in=perspective_attributes) & Q(description__in=descriptions)
-                
-                # Get grouped attribute descriptions
-                grouped_descriptions = MemberAttributeDescription.objects.filter(desc_query)\
-                    .values('attribute__name', 'description')\
-                    .annotate(
-                        total_members=Count('member', distinct=True),
-                        user_ids=ArrayAgg('member__user_id', distinct=True)
-                    )
-                
-                # Process each attribute-description group
-                for group in grouped_descriptions:
-                    attr_name = group['attribute__name']
-                    desc_text = group['description']
-                    user_ids = group['user_ids']
-                    total_members = group['total_members']
+            if perspective_attributes:
+                # Build OR query for selected attributes and descriptions
+                attribute_query = Q()
+                for attr in perspective_attributes:
+                    if descriptions:
+                        # OR between descriptions for same attribute
+                        desc_query = Q()
+                        for desc in descriptions:
+                            desc_query |= Q(description=desc)
+                        attribute_query |= Q(attribute__name=attr) & desc_query
+                    else:
+                        attribute_query |= Q(attribute__name=attr)
 
-                    # Get per-example label counts
+                # Get all matching member descriptions
+                member_descriptions = MemberAttributeDescription.objects.filter(
+                    Q(attribute__perspective__projects=project_id) & attribute_query
+                ).select_related('member', 'attribute')
+
+                # Create member ID set
+                member_ids = set()
+                member_attr_map = defaultdict(lambda: defaultdict(list))
+                for md in member_descriptions:
+                    member_ids.add(md.member_id)
+                    member_attr_map[md.member_id][md.attribute.name].append(md.description)
+
+                total_group_members = len(member_ids)
+                
+                # Get users through members
+                users = Member.objects.filter(
+                    id__in=member_ids
+                ).values_list('user', flat=True)
+
+                if not users:
+                    # No members match the filter
+                    label_distributions = []
+                else:
+                    # Get annotations
                     label_counts = Category.objects.filter(
                         example__project=project,
-                        user_id__in=user_ids,
-                        label__text__in=labels
-                    ).values('example__id', 'example__text', 'label__text') \
+                        user__in=users
+                    ).values('example_id', 'example__text', 'label__text') \
                     .annotate(count=Count('id'))
-                    
-                    # Group by example
-                    examples = defaultdict(lambda: {'labels': [], 'total': 0})
-                    for item in label_counts:
-                        ex = examples[item['example__id']]
-                        ex['example_id'] = item['example__id']
-                        ex['example_text'] = item['example__text']
-                        ex['labels'].append({
-                            'label': item['label__text'],
-                            'count': item['count']
-                        })
-                        ex['total'] += item['count']
-                    
-                    # Add to distributions
+
+                    # Get assigned examples through members
+                    assigned_examples = Example.objects.filter(
+                        project=project,
+                        assignments__assignee__in=member_ids
+                    ).distinct()
+
+                    # Build example structure
+                    example_map = {}
+                    for example in assigned_examples:
+                        example_map[example.id] = {
+                            'example_id': example.id,
+                            'example_text': example.text,
+                            'labels': defaultdict(int),
+                            'annotated_members': set(),
+                            'total_possible': total_group_members,
+                            'max_label_count': 0,
+                            'agreement_rate': 0.0
+                        }
+
+                    # Populate annotation data
+                    for ann in label_counts:
+                        ex_id = ann['example_id']
+                        if ex_id in example_map:
+                            example = example_map[ex_id]
+                            example['labels'][ann['label__text']] += ann['count']
+                            # Track max count for agreement calculation
+                            if ann['count'] > example['max_label_count']:
+                                example['max_label_count'] = ann['count']
+                            
+                            # Track member annotations
+                            annotators = Category.objects.filter(
+                                example_id=ex_id,
+                                label__text=ann['label__text'],
+                                user__in=users
+                            ).values_list('user', flat=True).distinct()
+                            
+                            # Convert to member IDs
+                            member_annotators = Member.objects.filter(
+                                user__in=annotators,
+                                project=project
+                            ).values_list('id', flat=True)
+                            
+                            example['annotated_members'].update(member_annotators)
+
+                    # Calculate agreement rate and filter by view type
+                    formatted_examples = []
+                    for ex_id, ex in example_map.items():
+                        total_annotated = len(ex['annotated_members'])
+                        non_annotated = ex['total_possible'] - total_annotated
+                        
+                        # Calculate agreement rate
+                        if total_annotated > 0:
+                            agreement_rate = (ex['max_label_count'] / total_annotated) * 100
+                        else:
+                            agreement_rate = 0.0
+                            
+                        ex['agreement_rate'] = agreement_rate
+                        ex['non_annotated'] = non_annotated
+                        
+                        # Apply view filter
+                        if view_type == 'all' or \
+                           (view_type == 'agreement' and agreement_rate >= 60) or \
+                           (view_type == 'disagreement' and agreement_rate < 60):
+                            labels = [{'label': k, 'count': v} for k, v in ex['labels'].items()]
+                            formatted_examples.append({
+                                'example_id': ex['example_id'],
+                                'example_text': ex['example_text'],
+                                'labels': labels,
+                                'total': total_annotated,
+                                'non_annotated': non_annotated,
+                                'agreement_rate': agreement_rate,
+                                'is_agreement': agreement_rate >= 60
+                            })
+
                     label_distributions.append({
-                        'attribute': attr_name,
-                        'description': desc_text,
-                        'total_members': total_members,
-                        'examples': list(examples.values())
+                        'attributes': perspective_attributes,
+                        'descriptions': descriptions,
+                        'total_members': total_group_members,
+                        'examples': formatted_examples
                     })
 
             response_data = {
                 'total_examples': total_examples,
                 'conflict_count': conflict_count,
+                'total_members': total_members,
                 'label_distributions': label_distributions
             }
             

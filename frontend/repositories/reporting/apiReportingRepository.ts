@@ -7,46 +7,28 @@ export class APIReportingRepository {
   async getDisagreementStatistics(
     projectId: string,
     filters: {
-      members?: number[],
       attributes?: string[],
       descriptions?: string[],
-      labels?: string[],
+      view?: string
     } = {}
   ): Promise<DisagreementStatistics> {
     const params = new URLSearchParams()
-    
-    if (filters.members?.length) {
-      filters.members.forEach(member => params.append('members', member.toString()))
-    }
     
     if (filters.attributes?.length) {
       filters.attributes.forEach(attr => params.append('attributes', attr))
     }
 
     if (filters.descriptions?.length) {
-      filters.descriptions.forEach(d => params.append('descriptions', d));
+      filters.descriptions.forEach(d => params.append('descriptions', d))
     }
-    if (filters.labels?.length) {
-      filters.labels.forEach(l => params.append('labels', l));
+
+    if (filters.view) {
+      params.append('view', filters.view)
     }
 
     const response = await this.request.get(`/projects/${projectId}/reporting/disagreements?${params}`) as {
-      data: {
-        total_examples: number
-        conflict_count: number
-        label_distributions: {
-          attribute: string
-          descriptions: {
-            description: string
-            labels: {
-              label: string
-              count: number
-            }[]
-          }[]
-        }[]
-      }
+      data: DisagreementStatistics
     }
-
     return response.data
   }
 
