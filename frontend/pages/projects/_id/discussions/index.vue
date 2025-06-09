@@ -4,6 +4,17 @@
       <v-card-title>
         {{ discussion.title }}
         <v-chip small color="green" class="ml-2">Active Discussion</v-chip>
+      
+      <v-spacer></v-spacer>
+
+      <v-btn 
+          v-if="isAdmin"
+          color="error"
+          small
+          @click="closeSession"
+        >
+          Close Session
+        </v-btn>
       </v-card-title>
       
       <v-card-text class="card-content">
@@ -162,7 +173,7 @@ import { DiscussionItem, DiscussionCommentItem } from '@/domain/models/discussio
 
 export default Vue.extend({
   layout: 'project',
-  middleware: ['check-auth', 'auth', 'setCurrentProject'],
+  middleware: ['check-auth', 'auth', 'setCurrentProject', 'discussion'],
 
   data() {
     return {
@@ -175,11 +186,15 @@ export default Vue.extend({
       isPosting: false,
       showDeleteDialog: false,
       commentToDelete: null as DiscussionCommentItem | null,
+      currentRole: '',
       successMessage: '',
       errorMessage: '',
       mdiPencil,
       mdiDelete,
       mdiCheck,
+      isOffline: !navigator.onLine,
+      networkCheckInterval: null as number|null,
+      scrollPosition: 0,
     }
   },
 
@@ -194,12 +209,23 @@ export default Vue.extend({
       return [...this.comments].sort((a, b) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
-    }
+    },
+
+    isAdmin() {
+      return this.currentRole === 'project_admin';
+    },
+  },
+
+  async created() {
+    await this.loadCurrentRole();
   },
 
   mounted() {
     this.setupRealtimeListeners()
     window.addEventListener('online', this.handleOnlineStatus)
+    this.networkCheckInterval = window.setInterval(() => {
+      this.checkNetworkStatus()
+    }, 1000) as unknown as number
   },
 
   beforeDestroy() {
@@ -208,9 +234,62 @@ export default Vue.extend({
     this.$services.discussion.off('comment-updated', this.handleUpdatedComment)
     this.$services.discussion.off('comment-deleted', this.handleDeletedComment)
     this.$services.discussion.off('cache-error', this.handleCacheError)
+    if (this.networkCheckInterval) {
+      clearInterval(this.networkCheckInterval)
+    }
   },
 
   methods: {
+    async loadCurrentRole() {
+      try {
+        const role = await this.$repositories.member.fetchMyRole(this.$route.params.id);
+        this.currentRole = role.rolename;
+      } catch (error) {
+        console.error('Failed to load current role:', error);
+      }
+    },
+    async closeSession() {
+      try {
+        const response = await this.$services.discussion.closeSession(
+          this.$route.params.id,
+          this.discussion.id
+        )
+        if (response.pending_closure) {
+          this.$store.commit('discussion/setPendingClosure', true)
+          this.successMessage = 'Session closure pending database connection'
+        } else {
+          this.$store.commit('discussion/SET_JOIN_STATUS', false)
+          this.$store.commit('discussion/SET_ACTIVE_SESSION', null)
+          this.$store.commit('discussion/SET_PENDING_CLOSURE', false)
+          this.successMessage = 'Session closed successfully'
+          if(this.isAdmin)
+          {
+            setTimeout(() => {
+              this.$router.push(`/projects/${this.$route.params.id}/discussions/sessions`)
+            }, 2000)
+          }
+          else {
+            setTimeout(() => {
+            this.$router.push(`/projects/${this.$route.params.id}`)
+          }, 2000)
+          }
+        }
+      } catch (error) {
+        this.handleError(error, 'close session')
+      }
+    },
+    checkNetworkStatus() {
+      const wasOffline = this.isOffline
+      this.isOffline = !navigator.onLine
+      
+      // Only show message on state change
+      if (wasOffline !== this.isOffline) {
+        if (!this.isOffline) {
+          this.handleOnlineStatus()
+        }
+      }
+    },
+
     setupRealtimeListeners() {
       this.$services.discussion.on('comment-created', this.handleNewComment)
       this.$services.discussion.on('comment-updated', this.handleUpdatedComment)

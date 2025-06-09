@@ -318,7 +318,17 @@ class Discussion(models.Model):
     description = models.TextField(default="Discuss annotation guidelines and resolve disagreements")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    participants = models.ManyToManyField(
+        Member,
+        related_name='discussion_participants',
+        blank=True
+    )
+    
+    # Track closure attempt when offline
+    pending_closure = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -328,6 +338,29 @@ class Discussion(models.Model):
                 name='unique_active_discussion'
             )
         ]
+    def close(self):
+        """Close the discussion session"""
+        if not self.is_active:
+            return False
+        
+        self.is_active = False
+        self.finished_at = timezone.now()
+        self.save()
+        return True
+
+    def mark_pending_closure(self):
+        """Mark for closure when offline"""
+        self.pending_closure = True
+        self.save()
+        return True
+
+    def cancel_closure(self):
+        """Cancel pending closure"""
+        if self.pending_closure:
+            self.pending_closure = False
+            self.save()
+            return True
+        return False
 
 class DiscussionComment(models.Model):
     discussion = models.ForeignKey(Discussion, on_delete=models.CASCADE)

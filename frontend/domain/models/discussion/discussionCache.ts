@@ -83,4 +83,15 @@ export class DiscussionCache {
     private static saveCache(cache: any) {
         localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
     }
+
+    static clearProjectCache(projectId: string) {
+      const cache = this.getCache();
+      const keys = Object.keys(cache).filter(key => key.startsWith(`${projectId}_`));
+      
+      keys.forEach(key => {
+        delete cache[key];
+      });
+      
+      this.saveCache(cache);
+    }
 }

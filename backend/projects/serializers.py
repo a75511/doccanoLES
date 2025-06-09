@@ -232,12 +232,27 @@ class DiscussionCommentSerializer(serializers.ModelSerializer):
 
 class DiscussionSerializer(serializers.ModelSerializer):
     comments = DiscussionCommentSerializer(many=True, read_only=True)
-
+    session_status = serializers.SerializerMethodField()
+    participants = serializers.PrimaryKeyRelatedField(
+        many=True, 
+        queryset=Member.objects.all(),
+        required=False
+    )
+    
     class Meta:
         model = Discussion
         fields = ['id', 'project', 'title', 'description', 'is_active',
-                 'created_at', 'updated_at', 'comments']
-        read_only_fields = ['project', 'is_active']
+                 'created_at', 'updated_at', 'comments', 'started_at',
+                 'finished_at', 'session_status', 'pending_closure', 'participants']
+        read_only_fields = ['project', 'is_active', 'started_at', 'finished_at',
+                           'pending_closure']
+    
+    def get_session_status(self, obj):
+        if obj.finished_at:
+            return "closed"
+        if obj.pending_closure:
+            return "closing"
+        return "open"
 
 class MemberVoteSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.user.username', read_only=True)

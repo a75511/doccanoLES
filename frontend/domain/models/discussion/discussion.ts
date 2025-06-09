@@ -6,6 +6,9 @@ export class DiscussionItem {
         readonly description: string,
         readonly isActive: boolean,
         readonly createdAt: string,
+        readonly started_at: string,
+        readonly finished_at: string | null,
+        readonly pending_closure: boolean,
         readonly comments: DiscussionCommentItem[] = []
     ) {}
 }

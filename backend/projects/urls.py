@@ -4,7 +4,7 @@ from .views.member import MemberDetail, MemberList, MyRole
 from .views.project import CloneProject, ProjectDetail, ProjectList, ProjectLockView
 from .views.tag import TagDetail, TagList
 from .views.perspective import PerspectiveListView, PerspectiveDetailView, PerspectiveAttributeListView, CreatePerspectiveView, AssignPerspectiveToProject, AttributeDescriptionsView
-from .views.discussion import ActiveDiscussionDetail, CommentDetail, CommentListCreate
+from .views.discussion import ActiveDiscussionDetail, DiscussionSessionViewSet, CommentDetail, CommentListCreate
 from .views.reporting import ReportingView
 from .views.voting import VotingSessionView, StartVotingView, SubmitVoteView, EndVotingView, CreateFollowUpVotingView
 
@@ -24,6 +24,11 @@ urlpatterns = [
     path(route="projects/<int:project_id>/assign-perspective/<int:perspective_id>", view=AssignPerspectiveToProject.as_view(), name="assign_perspective"),
     path(route="projects/<int:project_id>/attribute-descriptions", view=AttributeDescriptionsView.as_view(), name="attribute_descriptions"),
     path(route="projects/<int:project_id>/discussion", view=ActiveDiscussionDetail.as_view(), name="active_discussion"),
+    path(route='projects/<int:project_id>/discussion/sessions', view=DiscussionSessionViewSet.as_view({'post': 'start_session'}), name='start_session'),
+    path(route='projects/<int:project_id>/discussion/sessions/<int:pk>/join', view=DiscussionSessionViewSet.as_view({'post': 'join_session'}), name='join_session'),
+    path(route='projects/<int:project_id>/discussion/sessions/<int:pk>/participation', view=DiscussionSessionViewSet.as_view({'get': 'check_participation'}), name='check_participation'),
+    path(route='projects/<int:project_id>/discussion/sessions/<int:pk>/close', view=DiscussionSessionViewSet.as_view({'post': 'close_session'}), name='close_session'),
+    path(route='projects/<int:project_id>/discussion/sessions/<int:pk>/cancel-close', view=DiscussionSessionViewSet.as_view({'post': 'cancel_closure'}), name='cancel_closure'),
     path(route="projects/<int:project_id>/discussion/comments", view=CommentListCreate.as_view(), name="discussion_comments"),
     path(route="projects/<int:project_id>/discussion/comments/<int:comment_id>", view=CommentDetail.as_view(), name="comment_detail"),
     path(route="projects/<int:project_id>/reporting/disagreements", view=ReportingView.as_view(), name="disagreement_reporting"),

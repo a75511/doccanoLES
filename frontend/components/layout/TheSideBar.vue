@@ -61,6 +61,8 @@ export default {
     }
   },
 
+  middleware: ['discussion'],
+
   data() {
     return {
       selected: 0,
@@ -77,6 +79,24 @@ export default {
     },
     isAnnotator() {
       return this.currentRole === 'annotator'
+    },
+    hasActiveSession() {
+      console.log('Checking for active session:', this.$store.state.discussion.activeSession)
+      console.log('Has active session:', this.$store.getters['discussion/hasActiveSession'])
+      return this.$store.getters['discussion/hasActiveSession']
+    },
+    hasJoinedSession() {
+      return this.$store.state.discussion.hasJoined
+    },
+    discussionLink() {
+      if (this.isProjectAdmin) {
+        return this.hasActiveSession ? 'discussions' : 'discussions/sessions'
+      }
+      
+      return this.hasJoinedSession ? 'discussions' : 'discussions/sessions'
+    },
+    showDiscussionsTab() {
+      return this.isProjectAdmin || this.hasActiveSession
     },
 
     filteredItems() {
@@ -154,8 +174,8 @@ export default {
         {
           icon: mdiForum,
           text: 'Discussions',
-          link: 'discussions',
-          isVisible: true,
+          link: this.discussionLink,
+          isVisible: this.showDiscussionsTab
         },
         {
           icon: mdiFileChart,

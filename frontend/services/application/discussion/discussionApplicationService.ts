@@ -40,6 +40,66 @@ export class DiscussionApplicationService {
     }
   }
 
+  async startSession(projectId: string): Promise<DiscussionItem> {
+    try {
+        return await this.repository.startSession(projectId)
+    } catch (error: any) {
+        throw new Error(error.message || 'Failed to start session')
+    }
+  }
+
+  async joinSession(projectId: string, sessionId: number): Promise<void> {
+    try {
+      await this.repository.joinSession(projectId, sessionId);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to join session');
+    }
+  }
+
+  async checkParticipation(projectId: string, sessionId: number): Promise<{ hasJoined: boolean }> {
+    try {
+      return await this.repository.checkParticipation(projectId, sessionId);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to check participation');
+    }
+  }
+
+  async closeSession(projectId: string, sessionId: number): Promise<any> {
+    try {
+      const response = await this.repository.closeSession(projectId, sessionId)
+      
+      // Handle pending closure response
+      if (response.pending_closure) {
+        return { pending_closure: true }
+      }
+      
+      return response
+    } catch (error: any) {
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        throw new Error('Session is already closed')
+      } else if (error.response?.status === 500) {
+        throw new Error('Failed to close session: ' + (error.response.data?.error || 'Internal server error'))
+      }
+      
+      throw new Error(error.message || 'Failed to close session')
+    }
+  }
+
+  async cancelClosure(projectId: string, sessionId: number): Promise<void> {
+    try {
+      await this.repository.cancelClosure(projectId, sessionId)
+    } catch (error: any) {
+      if (error.response?.status === 400) {
+        throw new Error('No pending closure')
+      } else if (error.response?.status === 500) {
+        throw new Error('Failed to cancel closure: ' + (error.response.data?.error || 'Internal server error'))
+      }
+      
+      throw new Error(error.message || 'Failed to cancel closure')
+    }
+  }
+
   async getActiveDiscussion(projectId: string): Promise<DiscussionItem> {
     try {
       return await this.repository.getActiveDiscussion(projectId)
