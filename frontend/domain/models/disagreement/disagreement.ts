@@ -23,24 +23,17 @@ export interface ComparisonResponse {
   conflict_count: number
 }
 
-export interface ConflictPair {
-  user1: string
-  user2: string
-  details: Array<{
-    type: string
-    label?: string
-    details: string
-  }>
+export interface LabelPercentage {
+  label: string
+  annotator_count: number
+  total_annotators: number
+  agreement_percentage: number
 }
 
 export interface ExampleDisagreement {
-  example_id: number
   example_text: string | null
   total_annotators: number
-  conflicting_pairs: number
-  total_pairs: number
-  disagreement_percentage: number
-  conflicts: ConflictPair[]
+  label_percentages: LabelPercentage[]
   threshold_used: number
 }
 
@@ -61,21 +54,46 @@ export class DisagreementAnalysisSummary {
 
   getMostControversialExamples(): ExampleDisagreement[] {
     return [...this.disagreements]
-      .sort((a, b) => b.disagreement_percentage - a.disagreement_percentage)
+      .sort((a, b) => {
+        const minPercentageA = Math.min(...a.label_percentages.map(lp => lp.agreement_percentage))
+        const minPercentageB = Math.min(...b.label_percentages.map(lp => lp.agreement_percentage))
+        return minPercentageA - minPercentageB
+      })
       .slice(0, 5)
   }
 
-  getUserParticipationStats(): { [username: string]: number } {
-    const userCounts: { [username: string]: number } = {}
+  getUniqueLabels(): string[] {
+    const labels = new Set<string>()
+    this.disagreements.forEach(disagreement => {
+      disagreement.label_percentages.forEach(lp => {
+        labels.add(lp.label)
+      })
+    })
+    return Array.from(labels).sort()
+  }
+
+  getLabelStats(): { [label: string]: { totalExamples: number, avgPercentage: number } } {
+    const labelStats: { [label: string]: { totalExamples: number, totalPercentage: number } } = {}
 
     this.disagreements.forEach(disagreement => {
-      disagreement.conflicts.forEach(conflict => {
-        userCounts[conflict.user1] = (userCounts[conflict.user1] || 0) + 1
-        userCounts[conflict.user2] = (userCounts[conflict.user2] || 0) + 1
+      disagreement.label_percentages.forEach(lp => {
+        if (!labelStats[lp.label]) {
+          labelStats[lp.label] = { totalExamples: 0, totalPercentage: 0 }
+        }
+        labelStats[lp.label].totalExamples += 1
+        labelStats[lp.label].totalPercentage += lp.agreement_percentage
       })
     })
 
-    return userCounts
+    // Convert to average percentages
+    const result: { [label: string]: { totalExamples: number, avgPercentage: number } } = {}
+    Object.keys(labelStats).forEach(label => {
+      result[label] = {
+        totalExamples: labelStats[label].totalExamples,
+        avgPercentage: labelStats[label].totalPercentage / labelStats[label].totalExamples
+      }
+    })
+
+    return result
   }
-  
 }

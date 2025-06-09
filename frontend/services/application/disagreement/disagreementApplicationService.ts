@@ -1,6 +1,5 @@
 import { APIDisagreementRepository, APIAnalysisRepository } from '~/repositories/disagreement/apiDisagreementRepository'
 import { ComparisonResponse, DisagreementAnalysisSummary } from '~/domain/models/disagreement/disagreement'
-import { SearchQueryData } from '~/services/application/project/projectApplicationService'
 
 export class DisagreementApplicationService {
   constructor(private readonly repository: APIDisagreementRepository) {}
@@ -32,14 +31,14 @@ export class AnalysisApplicationService {
 
   public async getDisagreementAnalysis(
     projectId: string,
-    threshold: number,
-    query?: SearchQueryData
+    labelFilter?: string,
+    orderBy?: string
   ): Promise<DisagreementAnalysisSummary> {
     try {
       return await this.repository.listDisagreements(
-        projectId, 
-        query || { limit: '100', offset: '0' },
-        threshold
+        projectId,
+        labelFilter,
+        orderBy
       );
     } catch (error: any) {
       throw new Error(error.message);

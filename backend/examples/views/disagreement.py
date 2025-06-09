@@ -131,7 +131,9 @@ class AutoDisagreementAnalysis(APIView):
     def get(self, request, project_id):
         try:
             project = get_object_or_404(Project, pk=project_id)
-            threshold = float(request.query_params.get('threshold', 0.4))
+            threshold = 0.4  # Fixed threshold as requested
+            label_filter = request.query_params.get('label', '')
+            order_by = request.query_params.get('order_by', 'percentage')  # 'percentage' or 'label'
             
             # Get examples with at least 2 annotations
             examples = Example.objects.filter(
@@ -147,40 +149,34 @@ class AutoDisagreementAnalysis(APIView):
             
             for example in examples:
                 states = example.states.all()
-                total_annotators = states.count()
                 
-                # Compare all pairs of annotations
-                conflicts = []
-                states_list = list(states)
+                # Get all annotations for this example
+                all_annotations = []
+                for state in states:
+                    annotations = self._get_annotations_safe(state)
+                    all_annotations.extend(annotations)
                 
-                for i in range(total_annotators):
-                    for j in range(i+1, total_annotators):
-                        state1 = states_list[i]
-                        state2 = states_list[j]
-                        
-                        # Get annotations safely
-                        annotations1 = self._get_annotations_safe(state1)
-                        annotations2 = self._get_annotations_safe(state2)
-                        
-                        if not self._annotations_equal(annotations1, annotations2):
-                            conflicts.append({
-                                'user1': state1.confirmed_by.username,
-                                'user2': state2.confirmed_by.username,
-                                'details': self._find_differences(annotations1, annotations2)
-                            })
+                # Calculate label percentages
+                label_stats = self._calculate_label_percentages(all_annotations, states.count())
                 
-                total_pairs = total_annotators * (total_annotators - 1) / 2
-                disagreement_percentage = len(conflicts) / total_pairs if total_pairs > 0 else 0
+                # Filter by label if specified
+                if label_filter:
+                    label_stats = [stat for stat in label_stats if label_filter.lower() in stat['label'].lower()]
                 
-                if disagreement_percentage >= threshold:
+                # Check if any label has disagreement (percentage below threshold)
+                has_disagreement = any(stat['agreement_percentage'] < threshold * 100 for stat in label_stats)
+                
+                if has_disagreement and label_stats:  # Only include if there are disagreements and labels
+                    # Sort labels based on order_by parameter
+                    if order_by == 'percentage':
+                        label_stats.sort(key=lambda x: x['agreement_percentage'])
+                    else:  # order by label name
+                        label_stats.sort(key=lambda x: x['label'])
+                    
                     disagreements.append({
-                        'example_id': example.id,
                         'example_text': example.text,
-                        'total_annotators': total_annotators,
-                        'conflicting_pairs': len(conflicts),
-                        'total_pairs': total_pairs,
-                        'disagreement_percentage': disagreement_percentage,
-                        'conflicts': conflicts,
+                        'total_annotators': states.count(),
+                        'label_percentages': label_stats,
                         'threshold_used': threshold
                     })
             
@@ -195,11 +191,34 @@ class AutoDisagreementAnalysis(APIView):
             
         except Exception as e:
             import traceback
-            traceback.print_exc()  # Log the full error
+            traceback.print_exc()
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    def _calculate_label_percentages(self, all_annotations, total_annotators):
+        """Calculate agreement percentage for each label"""
+        label_counts = {}
+        
+        # Count how many times each label appears
+        for annotation in all_annotations:
+            if annotation.get('type') == 'category' and 'label' in annotation:
+                label = annotation['label']
+                label_counts[label] = label_counts.get(label, 0) + 1
+        
+        # Calculate percentages
+        label_stats = []
+        for label, count in label_counts.items():
+            agreement_percentage = (count / total_annotators) * 100
+            label_stats.append({
+                'label': label,
+                'annotator_count': count,
+                'total_annotators': total_annotators,
+                'agreement_percentage': round(agreement_percentage, 1)
+            })
+        
+        return label_stats
 
     def _get_annotations_safe(self, example_state):
         """Safe annotation extraction with error handling"""

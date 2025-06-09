@@ -8,13 +8,7 @@
 
       <v-card-text class="grey lighten-4 py-2">
         <v-row align="center" no-gutters>
-          <v-col cols="12" md="4">
-            <member-selector 
-              v-model="selectedMembers" 
-              :project-id="$route.params.id" 
-            />
-          </v-col>
-          <v-col cols="12" md="4" class="pl-md-2">
+          <v-col cols="12" md="3">
             <perspective-filter 
               v-model="selectedAttributes" 
               :project-id="$route.params.id" 
@@ -28,18 +22,30 @@
             />
           </v-col>
           <v-col cols="12" md="3" class="pl-md-2">
-            <label-filter 
-              v-model="selectedLabels"
-              :project-id="$route.params.id"
+            <view-type-filter 
+              v-model="viewType"
             />
           </v-col>
           <v-col cols="12" md="3" class="pl-md-2">
             <export-filter v-model="selectedFormats" />
           </v-col>
-          <v-col cols="12" md="4" class="pl-md-2">
-            <v-btn color="primary" @click="applyFilters">
+        </v-row>
+        
+        <v-row class="mt-2">
+          <v-col cols="12" md="3">
+            <v-btn 
+              color="primary" 
+              :loading="loading"
+              @click="applyFilters"
+            >
               <v-icon left>{{ icons.refresh }}</v-icon>
               Apply Filters
+            </v-btn>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-btn color="secondary" @click="resetFilters">
+              <v-icon left>{{ icons.close }}</v-icon>
+              Reset
             </v-btn>
           </v-col>
         </v-row>
@@ -50,76 +56,155 @@
           {{ error }}
         </v-alert>
 
-        <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
+        <v-progress-linear 
+          v-if="loading" 
+          indeterminate 
+          color="primary"
+        ></v-progress-linear>
 
-        <template v-if="!loading && stats && selectedFormats.includes('preview')">
-          <!-- Overall Statistics Section -->
+        <!-- No data message when filters not selected or no results -->
+        <v-alert
+          v-if="!loading && showNoDataMessage"
+          type="info"
+          class="ma-4"
+        >
+          {{ noDataMessage }}
+        </v-alert>
+
+        <template v-if="shouldShowResults">
+          <!-- Overall Statistics Section - Now filtered data only -->
           <v-card class="mb-6" outlined>
-            <v-card-title class="primary--text">Global Results</v-card-title>
+            <v-card-title class="primary--text">
+              <v-icon left color="primary">{{ icons.chartBar }}</v-icon>
+              Filtered Results Summary
+            </v-card-title>
             <v-card-text>
-              <v-simple-table>
-                <template v-slot:default>
-                  <thead>
-                    <tr>
-                      <th>Metric</th>
-                      <th>Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Total Examples</td>
-                      <td>{{ stats.total_examples }}</td>
-                    </tr>
-                    <tr>
-                      <td>Conflict Count</td>
-                      <td>{{ stats.conflict_count }}</td>
-                    </tr>
-                    <tr>
-                      <td>Agreement Count</td>
-                      <td>{{ stats.total_examples - stats.conflict_count }}</td>
-                    </tr>
-                  </tbody>
-                </template>
-              </v-simple-table>
+              <v-row>
+                <v-col cols="12" md="4">
+                  <v-card color="blue lighten-5" outlined>
+                    <v-card-text class="text-center">
+                      <div class="text-h4 blue--text">{{ filteredTotalExamples }}</div>
+                      <div class="text-subtitle-1">Total Examples (Filtered)</div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-card color="red lighten-5" outlined>
+                    <v-card-text class="text-center">
+                      <div class="text-h4 red--text">{{ filteredDisagreements }}</div>
+                      <div class="text-subtitle-1">Disagreements</div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-card color="green lighten-5" outlined>
+                    <v-card-text class="text-center">
+                      <div class="text-h4 green--text">{{ filteredAgreements }}</div>
+                      <div class="text-subtitle-1">Agreements</div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
             </v-card-text>
           </v-card>
 
           <!-- Label Distributions Section -->
-          <v-card 
-            v-for="dist in labelDistributions" 
-            :key="`dist-${dist.attribute}-${dist.description}`" 
-            class="mb-6" 
-            outlined
-          >
-            <v-card-title class="primary--text">
-              {{ dist.attribute }} - {{ dist.description }}
-            </v-card-title>
-            
-            <v-card-text v-for="example in dist.examples" :key="example.example_id">
-              <v-card class="mb-4" outlined>
-                <v-card-title>Example Text: {{ example.example_text }}</v-card-title>
-                <v-card-subtitle>Total Annotations: {{ exampleTotal(example) }}</v-card-subtitle>
-                <v-card-text>
-                  <v-simple-table>
-                    <template v-slot:default>
-                      <thead>
-                        <tr>
-                          <th>Label</th>
-                          <th>Count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr v-for="label in example.labels" :key="label.label">
-                          <td>{{ label.label }}</td>
-                          <td>{{ label.count }}</td>
-                        </tr>
-                      </tbody>
-                    </template>
-                  </v-simple-table>
-                </v-card-text>
-              </v-card>
-            </v-card-text>
-          </v-card>
+          <div v-for="dist in labelDistributions" :key="getDistributionKey(dist)">
+            <v-card class="mb-6" outlined>
+              <v-card-title class="primary--text">
+                <v-icon left color="primary">{{ icons.accountGroup }}</v-icon>
+                Group: {{ formatGroupTitle(dist) }}
+              </v-card-title>
+              
+              <v-card-subtitle>
+                Total Members in Group: {{ dist.total_members }}
+              </v-card-subtitle>
+
+              <!-- Examples in this group -->
+              <v-card-text>
+                <template v-if="dist.examples && dist.examples.length > 0">
+                  <v-row>
+                    <v-col 
+                      v-for="example in dist.examples" 
+                      :key="example.example_id"
+                      cols="12"
+                      class="mb-4"
+                    >
+                      <v-card outlined elevation="2">
+                        <v-card-title class="text-h6">
+                          <v-icon left :color="getAgreementColor(example)">
+                            {{ getAgreementIcon(example) }}
+                          </v-icon>
+                          Example #{{ example.example_id }}
+                          <v-spacer></v-spacer>
+                          <v-chip 
+                            :color="getAgreementColor(example)" 
+                            dark 
+                            small
+                          >
+                            {{ getAgreementText(example) }}
+                          </v-chip>
+                        </v-card-title>
+                        
+                        <v-card-subtitle>
+                          <strong>Text:</strong> {{ truncateText(example.example_text, 100) }}
+                        </v-card-subtitle>
+                        
+                        <v-card-text>
+                          <v-row>
+                            <v-col cols="12" md="8">
+                              <v-simple-table dense>
+                                <template #default>
+                                  <thead>
+                                    <tr>
+                                      <th class="text-left">Label</th>
+                                      <th class="text-left">Count</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr v-for="label in example.labels" :key="label.label">
+                                      <td>{{ label.label }}</td>
+                                      <td>
+                                        <v-chip small color="primary">
+                                          {{ label.count }}
+                                        </v-chip>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </template>
+                              </v-simple-table>
+                            </v-col>
+                            <v-col cols="12" md="4">
+                              <v-card color="grey lighten-5" flat>
+                                <v-card-text>
+                                  <div class="text-center">
+                                    <div class="text-h6 primary--text">
+                                      {{ example.total }}
+                                    </div>
+                                    <div class="text-caption">Total Annotators</div>
+                                  </div>
+                                  <v-divider class="my-2"></v-divider>
+                                  <div class="text-center">
+                                    <div class="text-h6 orange--text">
+                                      {{ example.non_annotated }}
+                                    </div>
+                                    <div class="text-caption">Not Annotated</div>
+                                  </div>
+                                </v-card-text>
+                              </v-card>
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </template>
+                <v-alert v-else type="info" outlined>
+                  No examples found for this group with the current filters.
+                </v-alert>
+              </v-card-text>
+            </v-card>
+          </div>
         </template>
       </v-card-text>
     </v-card>
@@ -127,20 +212,25 @@
 </template>
 
 <script>
-import { mdiRefresh } from '@mdi/js'
+import { 
+  mdiRefresh, 
+  mdiClose, 
+  mdiChartBar, 
+  mdiAccountGroup, 
+  mdiCheck, 
+  mdiAlert 
+} from '@mdi/js'
 import ExportFilter from '@/components/reporting/ExportFilter.vue'
-import MemberSelector from '@/components/reporting/MemberSelector.vue'
 import PerspectiveFilter from '@/components/reporting/PerspectiveFilter.vue'
 import DescriptionFilter from '@/components/reporting/DescriptionFilter.vue'
-import LabelFilter from '@/components/reporting/LabelFilter.vue'
+import ViewTypeFilter from '@/components/reporting/ViewTypeFilter.vue'
 
 export default {
   components: {
     ExportFilter,
-    MemberSelector,
     PerspectiveFilter,
-    LabelFilter,
     DescriptionFilter,
+    ViewTypeFilter,
   },
 
   layout: 'project',
@@ -149,252 +239,387 @@ export default {
   data() {
     return {
       stats: null,
-      selectedMembers: [],
       selectedAttributes: [],
       selectedDescriptions: [],
-      selectedLabels: [],
+      viewType: 'all',
       selectedFormats: ['preview'],
       loading: false,
-      exportLoading: false,
       error: null,
+      showResults: false,
       icons: {
-        refresh: mdiRefresh
+        refresh: mdiRefresh,
+        close: mdiClose,
+        chartBar: mdiChartBar,
+        accountGroup: mdiAccountGroup,
+        check: mdiCheck,
+        alert: mdiAlert
       }
     }
   },
 
   computed: {
     labelDistributions() {
-      if (!this.stats?.label_distributions) return []
-      return this.stats.label_distributions
+      return this.stats?.label_distributions || []
+    },
+
+    showNoDataMessage() {
+      if (this.loading) return false
+      
+      // Show message if no filters are selected
+      if (!this.selectedAttributes.length) {
+        return true
+      }
+      
+      // Show message if filters are selected but no results after applying
+      if (this.showResults && (!this.stats || !this.stats.label_distributions.length)) {
+        return true
+      }
+      
+      return false
+    },
+
+    noDataMessage() {
+      if (!this.selectedAttributes.length) {
+        return 'Please select at least one perspective attribute to view the disagreement report.'
+      }
+      
+      if (this.showResults && (!this.stats || !this.stats.label_distributions.length)) {
+        return 'No data available for the selected filters. Try adjusting your filter criteria.'
+      }
+      
+      return 'Click "Apply Filters" to load the disagreement report.'
+    },
+
+    shouldShowResults() {
+      return !this.loading && 
+             this.stats && 
+             this.showResults && 
+             this.selectedFormats.includes('preview') &&
+             this.stats.label_distributions.length > 0
+    },
+
+    // Computed properties for filtered statistics
+    filteredTotalExamples() {
+      if (!this.stats || !this.stats.label_distributions.length) return 0
+      
+      const uniqueExamples = new Set()
+      this.stats.label_distributions.forEach(dist => {
+        dist.examples?.forEach(example => {
+          uniqueExamples.add(example.example_id)
+        })
+      })
+      
+      return uniqueExamples.size
+    },
+
+    filteredAgreements() {
+      if (!this.stats || !this.stats.label_distributions.length) return 0
+      
+      let agreements = 0
+      this.stats.label_distributions.forEach(dist => {
+        dist.examples?.forEach(example => {
+          if (example.is_agreement) {
+            agreements++
+          }
+        })
+      })
+      
+      return agreements
+    },
+
+    filteredDisagreements() {
+      if (!this.stats || !this.stats.label_distributions.length) return 0
+      
+      let disagreements = 0
+      this.stats.label_distributions.forEach(dist => {
+        dist.examples?.forEach(example => {
+          if (!example.is_agreement) {
+            disagreements++
+          }
+        })
+      })
+      
+      return disagreements
     }
   },
 
   methods: {
     async loadData() {
       this.loading = true
+      this.error = null
+      
       try {
         const response = await this.$services.reporting.getDisagreementStatistics(
           this.$route.params.id,
           {
-            members: this.selectedMembers,
             attributes: this.selectedAttributes,
             descriptions: this.selectedDescriptions,
-            labels: this.selectedLabels
+            view: this.viewType
           }
         )
         this.stats = response
       } catch (e) {
-        this.error = e.message || 'Failed to load data'
+        this.error = e.response?.data?.error || e.message || 'Failed to load data'
+        this.stats = null
       } finally {
         this.loading = false
       }
     },
 
     async applyFilters() {
-      this.loading = true
-      const timeout = 5000; // 10 seconds timeout
-      let timeoutReached = false;
-
-      const timeoutPromise = new Promise((resolve, reject) => {
-        // Use resolve to comply with the naming rule
-        resolve('Timeout initialized');
-      setTimeout(() => {
-        timeoutReached = true;
-        reject(new Error('Database Unavailable. Please try again later.'));
-      }, timeout);
-      });
-
-      try {
-      await Promise.race([
-        (async () => {
-        await this.loadData();
-        if (this.selectedFormats.includes('csv')) {
-          await this.exportCSV();
-        }
-        if (this.selectedFormats.includes('pdf')) {
-          await this.exportPDF();
-        }
-        })(),
-        timeoutPromise
-      ]);
-      } catch (e) {
-      if (timeoutReached) {
-        this.error = 'Database Unavailable. Please try again later.';
-      } else {
-        this.error = e.message || 'Failed to apply filters';
-      }
-      } finally {
-      this.loading = false;
-      }
-    },
-
-    exampleTotal(example) {
-      return example.labels.reduce((sum, item) => sum + item.count, 0)
-    },
-
-    async handleExport(formats) {
-      if (!this.stats) {
-        this.showError('No data to export')
+      // Validate that at least attributes are selected
+      if (!this.selectedAttributes.length) {
+        this.error = 'Please select at least one perspective attribute.'
         return
       }
 
-      this.exportLoading = true
+      this.showResults = false
+      await this.loadData()
+      this.showResults = true
+
+      // Handle exports if requested
       try {
-        for (const format of formats) {
-          switch(format) {
-            case 'csv':
-              await this.exportCSV()
-              break
-            case 'pdf':
-              await this.exportPDF()
-              break
-          }
+        if (this.selectedFormats.includes('csv')) {
+          await this.exportCSV()
         }
-        this.$store.dispatch('showSnackbar', {
-          text: `Exported ${formats.length} format(s) successfully`,
-          color: 'success'
-        })
+        if (this.selectedFormats.includes('pdf')) {
+          await this.exportPDF()
+        }
       } catch (e) {
-        this.showError('Export failed: ' + (e.message || 'Unknown error'))
-      } finally {
-        this.exportLoading = false
+        this.error = e.message || 'Export failed'
       }
     },
 
-    showError(message) {
-      this.error = message
-      setTimeout(() => {
-        this.error = null
-      }, 5000)
+    resetFilters() {
+      this.selectedAttributes = []
+      this.selectedDescriptions = []
+      this.viewType = 'all'
+      this.selectedFormats = ['preview']
+      this.stats = null
+      this.showResults = false
+      this.error = null
+    },
+
+    formatGroupTitle(dist) {
+      const attrs = dist.attributes?.join(', ') || 'No Attributes'
+      const descs = dist.descriptions?.length ? ` (${dist.descriptions.join(', ')})` : ''
+      return `${attrs}${descs}`
+    },
+
+    getAgreementColor(example) {
+      return example.is_agreement ? 'green' : 'red'
+    },
+
+    getAgreementIcon(example) {
+      return example.is_agreement ? this.icons.check : this.icons.alert
+    },
+
+    getAgreementText(example) {
+      return example.is_agreement ? 'Agreement' : 'Disagreement'
+    },
+
+    getDistributionKey(dist) {
+      const attrs = dist.attributes?.join('-') || 'no-attrs'
+      const descs = dist.descriptions?.join('-') || 'no-descs'
+      return `dist-${attrs}-${descs}`
+    },
+
+    truncateText(text, length) {
+      if (!text) return ''
+      return text.length > length ? text.substr(0, length) + '...' : text
     },
 
     exportCSV() {
-      return new Promise((resolve) => {
-        const csvContent = [
-          ['Category', 'Attribute', 'Description', 'Example', 'Label', 'Count'],
-          ['Overall', '', '', '', 'Total Examples', this.stats.total_examples],
-          ['Overall', '', '', '', 'Conflict Count', this.stats.conflict_count],
-          ['Overall', '', '', '', 'Agreement Count', this.stats.total_examples - this.stats.conflict_count],
-          ...this.labelDistributions.flatMap(dist => 
-            dist.examples.flatMap(example => 
-              example.labels.map(label => [
-                'Label Distribution',
-                dist.attribute,
-                dist.description,
-                example.example_text,
-                label.label,
-                label.count
-              ])
-            )
-          )
-        ]
+      if (!this.stats) {
+        throw new Error('No data available for export')
+      }
 
-        this.$export.exportCSV(csvContent, 'disagreement-report.csv')
-        resolve()
-      })
+      const csvData = []
+      
+      // Add header information
+      csvData.push(['Disagreement Report'])
+      csvData.push([])
+      csvData.push(['Filters Applied:'])
+      csvData.push(['Attributes', this.selectedAttributes.join(', ') || 'None'])
+      csvData.push(['Descriptions', this.selectedDescriptions.join(', ') || 'None'])
+      csvData.push(['View Type', this.viewType])
+      csvData.push([])
+      
+      // Add filtered statistics
+      csvData.push(['Filtered Statistics'])
+      csvData.push(['Total Examples (Filtered)', this.filteredTotalExamples])
+      csvData.push(['Disagreements (Filtered)', this.filteredDisagreements])
+      csvData.push(['Agreements (Filtered)', this.filteredAgreements])
+      csvData.push([])
+      
+      // Add detailed data header
+      csvData.push([
+        'Group Attributes',
+        'Group Descriptions', 
+        'Group Total Members',
+        'Example ID',
+        'Example Text',
+        'Agreement Status',
+        'Total Annotators',
+        'Non-Annotated',
+        'Label',
+        'Label Count'
+      ])
+      
+      // Add detailed data
+      for (const dist of this.labelDistributions) {
+        const groupAttrs = dist.attributes?.join(', ') || ''
+        const groupDescs = dist.descriptions?.join(', ') || ''
+        
+        for (const example of dist.examples || []) {
+          // Add example summary row
+          csvData.push([
+            groupAttrs,
+            groupDescs,
+            dist.total_members,
+            example.example_id,
+            example.example_text,
+            example.is_agreement ? 'Agreement' : 'Disagreement',
+            example.total,
+            example.non_annotated,
+            'ALL LABELS',
+            ''
+          ])
+          
+          // Add individual label rows
+          for (const label of example.labels || []) {
+            csvData.push([
+              '', '', '', '', '', '', '', '',
+              label.label,
+              label.count
+            ])
+          }
+        }
+      }
+
+      // Convert to CSV format and download
+      const csvContent = csvData.map(row => 
+        row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+      ).join('\n')
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `disagreement-report-${this.$route.params.id}.csv`
+      link.click()
     },
 
     async exportPDF() {
-    try {
-      const { jsPDF: JsPDF } = await import('jspdf');
-      const pdfDoc = new JsPDF();
-      
-      // Set document properties
-      pdfDoc.setProperties({
-        title: 'Disagreement Report',
-        subject: 'Annotation Statistics',
-        author: 'Your Application Name',
-      });
+      if (!this.stats) {
+        throw new Error('No data available for export')
+      }
 
-      // Add title
-      pdfDoc.setFontSize(18);
-      pdfDoc.setTextColor(40);
-      pdfDoc.text('Disagreement Report', pdfDoc.internal.pageSize.getWidth() / 2, 15, { align: 'center' });
-      
-      let yPosition = 30;
-      
-      // Add overall statistics section
-      pdfDoc.setFontSize(14);
-      pdfDoc.setTextColor(0, 0, 139); // Dark blue color
-      pdfDoc.text('Overall Results', 14, yPosition);
-      yPosition += 10;
-      
-      pdfDoc.setFontSize(12);
-      pdfDoc.setTextColor(0); // Black color
-      pdfDoc.text(`• Total Examples: ${this.stats.total_examples}`, 20, yPosition);
-      yPosition += 8;
-      pdfDoc.text(`• Conflict Count: ${this.stats.conflict_count}`, 20, yPosition);
-      yPosition += 8;
-      pdfDoc.text(`• Agreement Count: ${this.stats.total_examples - this.stats.conflict_count}`, 20, yPosition);
-      yPosition += 15;
-      
-      // Add label distributions
-      pdfDoc.setFontSize(14);
-      pdfDoc.setTextColor(0, 0, 139); // Dark blue color
-      
-      for (const dist of this.labelDistributions) {
-        // Check if we need a new page
-        if (yPosition > 260) {
-          pdfDoc.addPage();
-          yPosition = 20;
-        }
+      try {
+        const { jsPDF: JsPDF } = await import('jspdf')
+        const pdf = new JsPDF()
         
-        pdfDoc.text(`${dist.attribute} - ${dist.description}`, 14, yPosition);
-        yPosition += 10;
+        // Set document properties
+        pdf.setProperties({
+          title: 'Disagreement Report',
+          subject: 'Annotation Disagreement Analysis',
+          author: 'Doccano Reporting System'
+        })
+
+        let yPos = 20
         
-        for (const example of dist.examples) {
-          // Check if we need a new page before adding example
-          if (yPosition > 260) {
-            pdfDoc.addPage();
-            yPosition = 20;
+        // Add title
+        pdf.setFontSize(18)
+        pdf.setTextColor(40)
+        const pageWidth = pdf.internal.pageSize.getWidth()
+        pdf.text('Disagreement Report', pageWidth / 2, yPos, { align: 'center' })
+        yPos += 20
+        
+        // Add filter information
+        pdf.setFontSize(12)
+        pdf.setTextColor(0)
+        pdf.text('Applied Filters:', 20, yPos)
+        yPos += 8
+        const attributesText = `• Attributes: ${this.selectedAttributes.join(', ') || 'None'}`
+        pdf.text(attributesText, 25, yPos)
+        yPos += 6
+        const descriptionsText = `• Descriptions: ${this.selectedDescriptions.join(', ') || 'None'}`
+        pdf.text(descriptionsText, 25, yPos)
+        yPos += 6
+        pdf.text(`• View Type: ${this.viewType}`, 25, yPos)
+        yPos += 15
+        
+        // Add filtered statistics
+        pdf.setFontSize(14)
+        pdf.setTextColor(0, 0, 139)
+        pdf.text('Filtered Statistics', 20, yPos)
+        yPos += 10
+        
+        pdf.setFontSize(12)
+        pdf.setTextColor(0)
+        pdf.text(`• Total Examples (Filtered): ${this.filteredTotalExamples}`, 25, yPos)
+        yPos += 6
+        pdf.text(`• Disagreements: ${this.filteredDisagreements}`, 25, yPos)
+        yPos += 6
+        pdf.text(`• Agreements: ${this.filteredAgreements}`, 25, yPos)
+        yPos += 20
+        
+        // Add detailed information
+        for (const dist of this.labelDistributions) {
+          // Check if we need a new page
+          if (yPos > 250) {
+            pdf.addPage()
+            yPos = 20
           }
           
-          pdfDoc.setFontSize(12);
-          pdfDoc.setTextColor(0); // Black color
+          pdf.setFontSize(14)
+          pdf.setTextColor(0, 0, 139)
+          pdf.text(`Group: ${this.formatGroupTitle(dist)}`, 20, yPos)
+          yPos += 8
           
-          // Add example text (truncated)
-          const exampleText = this.truncateText(example.example_text, 100);
-          const exampleLines = pdfDoc.splitTextToSize(`Example: ${exampleText}`, 170);
-          pdfDoc.text(exampleLines, 20, yPosition);
-          yPosition += 8 * exampleLines.length;
+          pdf.setFontSize(10)
+          pdf.setTextColor(0)
+          pdf.text(`Total Members in Group: ${dist.total_members}`, 25, yPos)
+          yPos += 12
           
-          pdfDoc.text(`• Total Annotations: ${this.exampleTotal(example)}`, 20, yPosition);
-          yPosition += 8;
-          
-          // Add labels
-          pdfDoc.setFontSize(10);
-          for (const label of example.labels) {
-            // Check if we need a new page before adding label
-            if (yPosition > 270) {
-              pdfDoc.addPage();
-              yPosition = 20;
+          for (const example of dist.examples || []) {
+            if (yPos > 260) {
+              pdf.addPage()
+              yPos = 20
             }
             
-            pdfDoc.text(`- ${label.label}: ${label.count}`, 25, yPosition);
-            yPosition += 7;
+            pdf.setFontSize(11)
+            pdf.text(`Example #${example.example_id}`, 30, yPos)
+            yPos += 6
+            
+            const truncatedText = this.truncateText(example.example_text, 80)
+            const textLines = pdf.splitTextToSize(truncatedText, 150)
+            pdf.setFontSize(9)
+            pdf.text(textLines, 35, yPos)
+            yPos += textLines.length * 4 + 2
+            
+            const agreementText = example.is_agreement ? 'Agreement' : 'Disagreement'
+            pdf.text(`Status: ${agreementText}`, 35, yPos)
+            yPos += 6
+            const annotatorInfo = `Annotators: ${example.total}, Non-Annotated: ${example.non_annotated}`
+            pdf.text(annotatorInfo, 35, yPos)
+            yPos += 8
+            
+            // Add labels
+            for (const label of example.labels || []) {
+              pdf.text(`  - ${label.label}: ${label.count}`, 40, yPos)
+              yPos += 5
+            }
+            yPos += 5
           }
-          yPosition += 10;
         }
-        yPosition += 5;
+        
+        // Save the PDF
+        pdf.save(`disagreement-report-${this.$route.params.id}.pdf`)
+      } catch (e) {
+        console.error('PDF export error:', e)
+        throw new Error('Failed to generate PDF. Please try again.')
       }
-      
-      // Save the PDF
-      pdfDoc.save(`disagreement-report-${this.$route.params.id}.pdf`);
-    } catch (e) {
-      console.error('PDF export error:', e);
-      this.showError('Failed to generate PDF. Please try again.');
-      throw new Error('Error generating PDF');
     }
-  },
-
-    truncateText(text, length) {
-      return text?.length > length ? text.substr(0, length) + '...' : text
-    }
-  },
-
-  mounted() {
-    this.loadData()
   }
 }
 </script>
@@ -402,5 +627,13 @@ export default {
 <style scoped>
 .v-card {
   margin-bottom: 20px;
+}
+
+.text-h4 {
+  font-weight: bold;
+}
+
+.text-subtitle-1 {
+  opacity: 0.8;
 }
 </style>

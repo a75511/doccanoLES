@@ -2,7 +2,6 @@ import ApiService from '@/services/api.service'
 import { ComparisonResponse, DisagreementAnalysisSummary } from '@/domain/models/disagreement/disagreement'
 import { ExampleItem } from '~/domain/models/example/example'
 import { MemberItem } from '~/domain/models/member/member'
-import { SearchQueryData } from '~/services/application/project/projectApplicationService'
 
 export class APIDisagreementRepository {
   constructor(private readonly request = ApiService) {}
@@ -79,14 +78,15 @@ export class APIAnalysisRepository {
 
   async listDisagreements(
     projectId: string,
-    query: SearchQueryData,
-    threshold: number
-  ): Promise<DisagreementAnalysisSummary> { // Change return type
+    labelFilter?: string,
+    orderBy?: string
+  ): Promise<DisagreementAnalysisSummary> {
     const url = `/projects/${projectId}/disagreements/auto_analyze`;
-    const params = {
-      ...query,
-      threshold
-    };
+    const params: any = {};
+    
+    if (labelFilter) params.label = labelFilter;
+    if (orderBy) params.order_by = orderBy;
+    
     try {
       const response = await this.request.get(url, { params });
       return this.createDisagreementAnalysisFromResponse(response.data);
@@ -110,13 +110,9 @@ export class APIAnalysisRepository {
       data.examples_with_disagreements,
       data.threshold,
       data.disagreements.map((d: any) => ({
-        example_id: d.example_id,
         example_text: d.example_text,
         total_annotators: d.total_annotators,
-        conflicting_pairs: d.conflicting_pairs,
-        total_pairs: d.total_pairs,
-        disagreement_percentage: d.disagreement_percentage * 100, // Convert to percentage if needed
-        conflicts: d.conflicts,
+        label_percentages: d.label_percentages,
         threshold_used: d.threshold_used
       }))
     );

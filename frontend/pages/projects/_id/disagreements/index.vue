@@ -2,19 +2,27 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-toolbar flat>
-          <v-toolbar-title>Disagreement Analysis</v-toolbar-title>
+          <v-toolbar-title>Label Disagreement Analysis</v-toolbar-title>
           
           <v-spacer></v-spacer>
           
-          <v-slider
-            v-model="threshold"
-            :min="0"
-            :max="100"
-            :step="5"
-            label="Threshold (%)"
-            style="max-width: 300px; margin-right: 20px"
-            thumb-label
-          ></v-slider>
+          <!-- Label Filter -->
+          <v-text-field
+            v-model="labelFilter"
+            label="Filter by Label"
+            clearable
+            style="max-width: 200px; margin-right: 20px"
+            @input="analyze"
+          ></v-text-field>
+          
+          <!-- Order By -->
+          <v-select
+            v-model="orderBy"
+            :items="orderOptions"
+            label="Order By"
+            style="max-width: 150px; margin-right: 20px"
+            @change="analyze"
+          ></v-select>
           
           <v-btn
             color="primary"
@@ -58,74 +66,139 @@
             
             <v-col cols="12" md="4">
               <v-card>
-                <v-card-title>Disagreement Rate</v-card-title>
+                <v-card-title>Threshold</v-card-title>
                 <v-card-text class="text-h4">
-                  {{ summary.threshold*100 }}%
+                  40%
                 </v-card-text>
               </v-card>
             </v-col>
           </v-row>
-  
-          <!-- Disagreements Table -->
-          <v-data-table
-            :headers="headers"
-            :items="summary.disagreements"
-            :loading="isLoading"
-            class="elevation-1"
-          >
-            <template #[`item.disagreement_percentage`]="{ item }">
-              <v-chip :color="getColor(item.disagreement_percentage)">
-                {{ item.disagreement_percentage.toFixed(1) }}%
-              </v-chip>
-            </template>
-            
-            <template #[`item.actions`]="{ item }">
-              <v-btn
-                small
+
+          <!-- Unique Labels Summary -->
+          <v-card class="mb-4">
+            <v-card-title>Available Labels</v-card-title>
+            <v-card-text>
+              <v-chip
+                v-for="label in summary.getUniqueLabels()"
+                :key="label"
+                class="ma-1"
                 color="primary"
-                @click="showDetails(item)"
+                outlined
               >
-                Details
-              </v-btn>
-            </template>
-          </v-data-table>
+                {{ label }}
+              </v-chip>
+            </v-card-text>
+          </v-card>
+  
+          <!-- Disagreements List -->
+          <v-card>
+            <v-card-title>Examples with Label Disagreements</v-card-title>
+            <v-card-text>
+              <template v-if="summary.disagreements.length === 0">
+                <v-alert type="info">
+                  No disagreements found with the current filters.
+                </v-alert>
+              </template>
+              
+              <template v-else>
+                <v-expansion-panels>
+                  <v-expansion-panel
+                    v-for="(disagreement, index) in summary.disagreements"
+                    :key="index"
+                  >
+                    <v-expansion-panel-header>
+                      <div>
+                        <strong>Dataset {{ index + 1 }}</strong>
+                        <br>
+                        <span class="text-caption">
+                          {{ truncateText(disagreement.example_text) }}
+                        </span>
+                        <br>
+                        <span class="text-caption text--secondary">
+                          {{ disagreement.total_annotators }} annotators
+                        </span>
+                      </div>
+                    </v-expansion-panel-header>
+                    
+                    <v-expansion-panel-content>
+                      <v-row>
+                        <v-col cols="12">
+                          <h4>Label Agreement Percentages:</h4>
+                          <v-row>
+                            <v-col
+                              v-for="labelStat in disagreement.label_percentages"
+                              :key="labelStat.label"
+                              cols="12"
+                              sm="6"
+                              md="4"
+                            >
+                              <v-card outlined>
+                                <v-card-text>
+                                  <div class="d-flex justify-space-between align-center">
+                                    <span class="font-weight-bold">{{ labelStat.label }}</span>
+                                    <v-chip
+                                      :color="getPercentageColor(labelStat.agreement_percentage)"
+                                      dark
+                                      small
+                                    >
+                                      {{ labelStat.agreement_percentage }}%
+                                    </v-chip>
+                                  </div>
+                                  <div class="text-caption mt-1">
+{{ labelStat.annotator_count }}/{{ labelStat.total_annotators }} annotators
+                                  </div>
+                                  <v-progress-linear
+                                    :value="labelStat.agreement_percentage"
+                                    :color="getPercentageColor(labelStat.agreement_percentage)"
+                                    height="6"
+                                    class="mt-2"
+                                  ></v-progress-linear>
+                                </v-card-text>
+                              </v-card>
+                            </v-col>
+                          </v-row>
+                        </v-col>
+                      </v-row>
+                      
+                      <v-row v-if="disagreement.example_text">
+                        <v-col cols="12">
+                          <h4>Full Text:</h4>
+                          <p class="text-body-2">{{ disagreement.example_text }}</p>
+                        </v-col>
+                      </v-row>
+                    </v-expansion-panel-content>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </template>
+            </v-card-text>
+          </v-card>
         </template>
-        
-        <v-dialog v-model="detailDialog" max-width="800">
-          <disagreement-details
-            v-if="selectedExample"
-            :example="selectedExample"
-            @close="detailDialog = false"
-          />
-        </v-dialog>
       </v-card-text>
     </v-card>
   </template>
   
   <script lang="ts">
   import Vue from 'vue'
-  import { DisagreementAnalysisSummary, ExampleDisagreement } from '~/domain/models/disagreement/disagreement'
-  
+  import { DisagreementAnalysisSummary } from '~/domain/models/disagreement/disagreement'
   
   export default Vue.extend({
-  
     layout: 'project',
     data() {
       return {
-        threshold: 40,
         isLoading: false,
         error: '',
         summary: null as DisagreementAnalysisSummary | null,
-        detailDialog: false,
-        selectedExample: null as any,
-        headers: [
-          { text: 'Example ID', value: 'example_id' },
-          { text: 'Text Preview', value: 'example_text', sortable: false },
-          { text: 'Annotators', value: 'total_annotators' },
-          { text: 'Disagreement %', value: 'disagreement_percentage' },
-          { text: 'Actions', value: 'actions', sortable: false }
+        labelFilter: '',
+        orderBy: 'percentage',
+        orderOptions: [
+          { text: 'By Percentage', value: 'percentage' },
+          { text: 'By Label Name', value: 'label' }
         ]
       }
+    },
+
+    mounted() {
+      this.analyze()
     },
 
     methods: {
@@ -136,7 +209,8 @@
         try {
           this.summary = await this.$services.analysis.getDisagreementAnalysis(
             this.$route.params.id,
-            this.threshold / 100
+            this.labelFilter,
+            this.orderBy
           )
           console.log('Disagreement Analysis Summary:', this.summary)
         } catch (error) {
@@ -146,26 +220,16 @@
           this.isLoading = false
         }
       },
-  
-      showDetails(item: any) {
-        this.selectedExample = item
-        this.detailDialog = true
+
+      getPercentageColor(percentage: number): string {
+        if (percentage >= 80) return 'green'
+        if (percentage >= 60) return 'orange'
+        return 'red'
       },
-  
-      getColor(percentage: number): string {
-      if (percentage > 70) return 'red'
-      if (percentage > 40) return 'orange'
-      return 'green'
-    },
-    
-    // Add this method to get controversial examples
-    getControversialExamples(): ExampleDisagreement[] {
-      return this.summary ? this.summary.getMostControversialExamples() : []
-    },
-  
+
       truncateText(text: string | null): string {
-        if (!text) return ''
-        return text.length > 50 ? text.substring(0, 50) + '...' : text
+        if (!text) return 'No text available'
+        return text.length > 100 ? text.substring(0, 100) + '...' : text
       }
     }
   })
