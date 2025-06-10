@@ -6,14 +6,15 @@
           
           <v-spacer></v-spacer>
           
-          <!-- Label Filter -->
-          <v-text-field
+          <!-- Label Filter Dropdown -->
+          <v-select
             v-model="labelFilter"
+            :items="labelFilterOptions"
             label="Filter by Label"
             clearable
             style="max-width: 200px; margin-right: 20px"
-            @input="analyze"
-          ></v-text-field>
+            @change="analyze"
+          ></v-select>
           
           <!-- Order By -->
           <v-select
@@ -66,37 +67,28 @@
             
             <v-col cols="12" md="4">
               <v-card>
-                <v-card-title>Threshold</v-card-title>
+                <v-card-title>Agreement Threshold</v-card-title>
                 <v-card-text class="text-h4">
-                  40%
+                  {{ Math.round(summary.threshold * 100) }}%
                 </v-card-text>
               </v-card>
             </v-col>
           </v-row>
 
-          <!-- Unique Labels Summary -->
-          <v-card class="mb-4">
-            <v-card-title>Available Labels</v-card-title>
-            <v-card-text>
-              <v-chip
-                v-for="label in summary.getUniqueLabels()"
-                :key="label"
-                class="ma-1"
-                color="primary"
-                outlined
-              >
-                {{ label }}
-              </v-chip>
-            </v-card-text>
-          </v-card>
-  
           <!-- Disagreements List -->
           <v-card>
-            <v-card-title>Examples with Label Disagreements</v-card-title>
+            <v-card-title>
+              Examples with Label Disagreements
+              <v-spacer></v-spacer>
+              <v-chip color="warning" outlined>
+                No label reached {{ Math.round(summary.threshold * 100) }}% agreement
+              </v-chip>
+            </v-card-title>
             <v-card-text>
               <template v-if="summary.disagreements.length === 0">
-                <v-alert type="info">
-                  No disagreements found with the current filters.
+                <v-alert type="success">
+🎉 No disagreements found! All examples have at least one label with {{ Math.round(
+  summary.threshold * 100) }}% or higher agreement.
                 </v-alert>
               </template>
               
@@ -108,7 +100,14 @@
                   >
                     <v-expansion-panel-header>
                       <div>
-                        <strong>Dataset {{ index + 1 }}</strong>
+                        <strong>Example {{ index + 1 }}</strong>
+                        <v-chip 
+                          small 
+                          color="error" 
+                          class="ml-2"
+                        >
+                          Max: {{ disagreement.max_agreement || 'N/A' }}%
+                        </v-chip>
                         <br>
                         <span class="text-caption">
                           {{ truncateText(disagreement.example_text) }}
@@ -190,9 +189,19 @@
         summary: null as DisagreementAnalysisSummary | null,
         labelFilter: '',
         orderBy: 'percentage',
+        availableLabels: [] as string[],
         orderOptions: [
           { text: 'By Percentage', value: 'percentage' },
           { text: 'By Label Name', value: 'label' }
+        ]
+      }
+    },
+
+    computed: {
+      labelFilterOptions() {
+        return [
+          { text: 'All Labels', value: '' },
+          ...this.availableLabels.map(label => ({ text: label, value: label }))
         ]
       }
     },
@@ -212,6 +221,12 @@
             this.labelFilter,
             this.orderBy
           )
+          
+          // Update available labels for dropdown
+          if (this.summary && this.summary.available_labels) {
+            this.availableLabels = this.summary.available_labels
+          }
+          
           console.log('Disagreement Analysis Summary:', this.summary)
         } catch (error) {
           this.error = error.message || 'Database Unavailable. Please try again'
@@ -224,6 +239,12 @@
       getPercentageColor(percentage: number): string {
         if (percentage >= 80) return 'green'
         if (percentage >= 60) return 'orange'
+        return 'red'
+      },
+
+      getDisagreementColor(rate: number): string {
+        if (rate <= 10) return 'green'
+        if (rate <= 30) return 'orange'
         return 'red'
       },
 

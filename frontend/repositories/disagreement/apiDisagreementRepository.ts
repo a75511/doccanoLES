@@ -113,8 +113,10 @@ export class APIAnalysisRepository {
         example_text: d.example_text,
         total_annotators: d.total_annotators,
         label_percentages: d.label_percentages,
-        threshold_used: d.threshold_used
-      }))
+        threshold_used: d.threshold_used,
+        max_agreement: d.max_agreement  // Add this field
+      })),
+      data.available_labels  // Add this field
     );
   }
 }

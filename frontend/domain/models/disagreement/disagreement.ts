@@ -44,7 +44,8 @@ export class DisagreementAnalysisSummary {
     readonly total_examples_analyzed: number,
     readonly examples_with_disagreements: number,
     readonly threshold: number,
-    readonly disagreements: ExampleDisagreement[]
+    readonly disagreements: ExampleDisagreement[],
+    readonly available_labels?: string[]  // Add this field
   ) {}
 
   getDisagreementRate(): number {
@@ -63,6 +64,11 @@ export class DisagreementAnalysisSummary {
   }
 
   getUniqueLabels(): string[] {
+    // Use available_labels if provided, otherwise fall back to extracting from disagreements
+    if (this.available_labels && this.available_labels.length > 0) {
+      return this.available_labels
+    }
+    
     const labels = new Set<string>()
     this.disagreements.forEach(disagreement => {
       disagreement.label_percentages.forEach(lp => {

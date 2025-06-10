@@ -131,7 +131,7 @@ class AutoDisagreementAnalysis(APIView):
     def get(self, request, project_id):
         try:
             project = get_object_or_404(Project, pk=project_id)
-            threshold = 0.4  # Fixed threshold as requested
+            threshold = 0.6  # 60% threshold - if any label reaches this, it's agreement
             label_filter = request.query_params.get('label', '')
             order_by = request.query_params.get('order_by', 'percentage')  # 'percentage' or 'label'
             
@@ -146,6 +146,7 @@ class AutoDisagreementAnalysis(APIView):
             ).prefetch_related('states__confirmed_by')
             
             disagreements = []
+            all_labels = set()  # Collect all available labels
             
             for example in examples:
                 states = example.states.all()
@@ -159,26 +160,38 @@ class AutoDisagreementAnalysis(APIView):
                 # Calculate label percentages
                 label_stats = self._calculate_label_percentages(all_annotations, states.count())
                 
+                # Collect all labels for filter dropdown
+                for stat in label_stats:
+                    all_labels.add(stat['label'])
+                
+                # NEW LOGIC: Check for disagreement
+                # Disagreement occurs when NO label reaches the threshold
+                has_agreement = any(stat['agreement_percentage'] >= threshold * 100 for stat in label_stats)
+                has_disagreement = not has_agreement and len(label_stats) > 0
+                
                 # Filter by label if specified
+                filtered_label_stats = label_stats
                 if label_filter:
-                    label_stats = [stat for stat in label_stats if label_filter.lower() in stat['label'].lower()]
+                    filtered_label_stats = [stat for stat in label_stats if stat['label'] == label_filter]
                 
-                # Check if any label has disagreement (percentage below threshold)
-                has_disagreement = any(stat['agreement_percentage'] < threshold * 100 for stat in label_stats)
-                
-                if has_disagreement and label_stats:  # Only include if there are disagreements and labels
+                # Only include examples with disagreements
+                if has_disagreement and len(filtered_label_stats) > 0:
                     # Sort labels based on order_by parameter
                     if order_by == 'percentage':
-                        label_stats.sort(key=lambda x: x['agreement_percentage'])
+                        filtered_label_stats.sort(key=lambda x: x['agreement_percentage'], reverse=True)
                     else:  # order by label name
-                        label_stats.sort(key=lambda x: x['label'])
+                        filtered_label_stats.sort(key=lambda x: x['label'])
                     
                     disagreements.append({
                         'example_text': example.text,
                         'total_annotators': states.count(),
-                        'label_percentages': label_stats,
-                        'threshold_used': threshold
+                        'label_percentages': filtered_label_stats,
+                        'threshold_used': threshold,
+                        'max_agreement': max([stat['agreement_percentage'] for stat in label_stats]) if label_stats else 0
                     })
+            
+            # Convert all_labels to sorted list for frontend dropdown
+            available_labels = sorted(list(all_labels))
             
             return Response({
                 'project_id': project.id,
@@ -186,7 +199,8 @@ class AutoDisagreementAnalysis(APIView):
                 'total_examples_analyzed': examples.count(),
                 'examples_with_disagreements': len(disagreements),
                 'threshold': threshold,
-                'disagreements': disagreements
+                'disagreements': disagreements,
+                'available_labels': available_labels  # Add this for the dropdown
             })
             
         except Exception as e:
