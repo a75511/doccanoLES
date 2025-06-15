@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
-from projects.models import Project, Discussion, Member
+from projects.models import Project, Member
 from projects.models import GuidelineVoting, MemberVote
 from projects.serializers import VotingSessionSerializer, MemberVoteSerializer
 from projects.permissions import IsProjectAdmin, IsProjectMember
@@ -34,10 +34,8 @@ class StartVotingView(generics.UpdateAPIView):  # Changed from CreateUpdateAPIVi
 
     def patch(self, request, *args, **kwargs):
         voting = self.get_object()
-        discussion = Discussion.objects.filter(project=voting.project).order_by('-created_at').first()
         
         # Update voting session
-        voting.current_discussion = discussion
         voting.guidelines_snapshot = voting.project.guideline
         voting.status = 'voting'
         voting.save()
@@ -84,9 +82,6 @@ class EndVotingView(generics.UpdateAPIView):  # Changed from CreateAPIView
         voting.status = 'completed'
         voting.save_guideline_snapshot()
         voting.save()
-
-        # Close current discussion
-        Discussion.objects.filter(project=voting.project, is_active=True).update(is_active=False)
         
         serializer = self.get_serializer(voting)
         return Response(serializer.data)
@@ -105,12 +100,9 @@ class CreateFollowUpVotingView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        discussion = Discussion.objects.filter(project=previous_voting.project).order_by('-created_at').first()
-
         # Create new voting session
         voting = GuidelineVoting.objects.create(
             project=project,
-            current_discussion=discussion,
             previous_voting=previous_voting,
             status='not_started',
             guidelines_snapshot=project.guideline

@@ -261,6 +261,7 @@ export default Vue.extend({
           this.$store.commit('discussion/SET_JOIN_STATUS', false)
           this.$store.commit('discussion/SET_ACTIVE_SESSION', null)
           this.$store.commit('discussion/SET_PENDING_CLOSURE', false)
+          this.$store.commit('discussion/SET_VOTING_STATUS', true)
           this.successMessage = 'Session closed successfully'
           if(this.isAdmin)
           {

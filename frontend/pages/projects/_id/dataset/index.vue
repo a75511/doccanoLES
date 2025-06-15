@@ -280,7 +280,6 @@ export default Vue.extend({
     async lockProject() {
   try {
     await this.$services.project.lock(parseInt(this.projectId))
-    // Refresh the project data after locking
     await this.$store.dispatch('projects/setCurrentProject', this.projectId)
     this.dialogLock = false
   } catch (error) {
@@ -293,7 +292,11 @@ async unlockProject() {
   try {
     await this.$services.project.unlock(parseInt(this.projectId))
     // Refresh the project data after unlocking
+    this.$store.commit('discussion/SET_VOTING_STATUS', false)
     await this.$store.dispatch('projects/setCurrentProject', this.projectId)
+    if (this.$store.getters['discussion/hasActiveSession']) {
+      await this.$store.dispatch('discussion/closeSession', { projectId: this.projectId, sessionId: this.$store.state.discussion.activeSession.id })
+    }
     this.dialogUnlock = false
   } catch (error) {
     console.error('Failed to unlock project:', error)

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status, views
@@ -82,24 +83,17 @@ class ProjectLockView(views.APIView):
 
         # Handle locking logic
         if lock_status and not project.locked:
-            # Close existing active discussion
-            Discussion.objects.filter(project=project, is_active=True).update(is_active=False)
-            
-            # Create new discussion
-            new_discussion = Discussion.objects.create(
-                project=project,
-                title="Guidelines Discussion",
-                description="Initial discussion for locked project guidelines",
-                is_active=False
-            )
             
             # Create voting session
             GuidelineVoting.objects.create(
                 project=project,
-                current_discussion=new_discussion,
                 status='not_started',
                 guidelines_snapshot=project.guideline
             )
+        elif not lock_status and project.locked:
+            # If unlocking, ensure no active voting session exists
+            if GuidelineVoting.objects.filter(project=project, status='voting').exists():
+                GuidelineVoting.objects.filter(project=project, status='voting').update(status='completed')
 
         project.locked = lock_status
         project.save()

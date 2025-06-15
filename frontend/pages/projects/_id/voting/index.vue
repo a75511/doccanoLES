@@ -357,7 +357,7 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           this.isCreatingFollowUp = true
           await this.$services.voting.createFollowUp(this.projectId)
           this.showSuccess('voting.follow_up_created')
-          await this.loadVotingData()
+          this.$store.commit('discussion/SET_VOTING_STATUS', false) // Reset voting status
         } catch (error) {
           // this.handleError(error, 'Failed to create follow-up voting')
           this.handleError(error, 'Database Unavailable. Please try again later.')

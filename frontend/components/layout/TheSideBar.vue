@@ -83,11 +83,15 @@ export default {
     isAnnotator() {
       return this.currentRole === 'annotator'
     },
+    isVoting() {
+      return this.$store.getters['discussion/isVoting']
+    },
     hasActiveSession() {
       console.log('Checking for active session:', this.$store.state.discussion.activeSession)
       console.log('Has active session:', this.$store.getters['discussion/hasActiveSession'])
       return this.$store.getters['discussion/hasActiveSession']
     },
+    
     hasJoinedSession() {
       return this.$store.state.discussion.hasJoined
     },
@@ -99,7 +103,11 @@ export default {
       return this.hasJoinedSession ? 'discussions' : 'discussions/sessions'
     },
     showDiscussionsTab() {
-      return this.project.locked && (this.isProjectAdmin || this.hasActiveSession)
+      return this.project.locked && 
+      ((this.isProjectAdmin && !this.isVoting) || this.hasActiveSession)
+    },
+    showVotingTab() {
+      return this.project.locked && this.isVoting
     },
 
     filteredItems() {
@@ -190,7 +198,7 @@ export default {
           icon: mdiVote,
           text: 'Voting',
           link: 'voting',
-          isVisible: this.project.locked
+          isVisible: this.showVotingTab
         }
       ]
       return items.filter((item) => item.isVisible)
