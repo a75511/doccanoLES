@@ -7,6 +7,9 @@
           </div>
           <v-spacer></v-spacer>
         </v-card-title>
+        <v-alert v-if="errorMessage" type="error" class="mt-4">
+          {{ errorMessage }}
+        </v-alert>
         <v-text-field
             v-model="search"
             :prepend-inner-icon="mdiMagnify"
@@ -60,8 +63,6 @@
           params.id,
           parseInt(params.perspective_id)
         );
-  
-        console.log('Perspective:', perspective);
         
         const response = await app.$services.perspective.listAttributes(
           params.id,
@@ -77,7 +78,7 @@
         return { 
           attributes: response.items,
           isLoading: false,
-          error: null,
+          errorMessage: '',
           total: response.count,
           perspectiveName: perspective.name
         };
@@ -85,7 +86,6 @@
         return {
           attributes: [],
           isLoading: false,
-          error: error.message || 'Failed to load attributes',
           total: 0,
           perspectiveName: 'Unknown'
         };
@@ -103,7 +103,7 @@
         },
         isLoading: true,
         attributes: [],
-        error: null,
+        errorMessage: '',
         total: 0,
         perspectiveName: '',
         headers: [
@@ -145,6 +145,7 @@
         async handler() {
           this.isLoading = true;
           try {
+            this.errorMessage = '';
             const response = await this.$services.perspective.listAttributes(
               this.$route.params.id,
               parseInt(this.$route.params.perspective_id),
@@ -158,8 +159,16 @@
             );
             this.attributes = response.items;
             this.total = response.count;
-          } catch (error) {
-            console.error('Error fetching attributes:', error);
+          } catch (error: any) {
+            if (error.response?.data?.error) {
+                this.errorMessage = error.response.data.error
+              } else if (error.response?.data?.detail) {
+                this.errorMessage = error.response.data.detail
+              } else if (error instanceof Error) {
+                this.errorMessage = error.message
+              } else {
+                this.errorMessage = 'Failed to fetch atributes. Please try again.'
+            }
           }
           this.isLoading = false;
         },

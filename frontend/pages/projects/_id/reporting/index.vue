@@ -60,19 +60,19 @@ export default Vue.extend({
       reports: [
         {
           id: 1,
-          name: 'Disagreement Statistics',
-          description: 'Detailed comparison of annotator disagreements',
-          reportType: 'disagreement',
+          name: 'Annotation Statistics',
+          description: 'Detailed comparison of annotator annotations with charts',
+          reportType: 'annotation',
           lastGenerated: '2024-03-15',
-          route: 'disagreements' // Just the endpoint part
+          route: 'annotation-statistics' // Just the endpoint part
         },
         {
           id: 2,
-          name: 'Disagreement Report',
-          description: 'Report of annotator disagreements without charts',
-          reportType: 'disagreement',
+          name: 'Annotation Reports',
+          description: 'Report of annotator annotations without charts',
+          reportType: 'annotation',
           lastGenerated: '2024-03-16',
-          route: 'disagreements-report'
+          route: 'annotation-reports'
         },
       ]
     }

@@ -42,6 +42,12 @@
     <v-alert v-if="successMessage" type="success" class="mt-4">
       {{ successMessage }}
     </v-alert>
+    <v-alert v-if="warningMessage" type="warning" class="mt-4">
+      {{ warningMessage }}
+      <div v-if="generatedPassword" class="mt-2">
+        <strong>Password:</strong> {{ generatedPassword }}
+      </div>
+    </v-alert>
     <v-alert v-if="errorMessage" type="error" class="mt-4">
       {{ errorMessage }}
     </v-alert>
@@ -81,6 +87,8 @@ export default Vue.extend({
       },
       successMessage: '',
       errorMessage: '',
+      warningMessage: '',
+      generatedPassword: '',
     };
   },
   methods: {
@@ -88,7 +96,7 @@ export default Vue.extend({
       try {
         const repository = new APIUserRepository();
         const service = new UserApplicationService(repository);
-        await service.createUser({
+        const { message, password } = await service.createUser({
           username: this.userItem.username,
           email: this.userItem.email,
           first_name: this.userItem.first_name,
@@ -97,35 +105,57 @@ export default Vue.extend({
           is_superuser: this.userItem.is_superuser,
         });
         
-        this.successMessage = 'User created successfully!';
+        if (message?.includes('but email could not be sent')) {
+          this.warningMessage = message;
+          this.generatedPassword = password || '';
+          this.successMessage = '';
+        } else {
+          this.successMessage = message || 'User created successfully! Email Sent.';
+          this.warningMessage = '';
+          setTimeout(() => {
+            this.$router.push('/users');
+          }, 4000);
+        }
         this.errorMessage = '';
-        setTimeout(() => {
-          this.$router.push('/users');
-        }, 3000);
       } catch (error: any) {
-        if (error.response && error.response.data && error.response.data.error) {
+        this.handleError(error);
+      }
+    },
+
+    handleError(error: any) {
+      this.successMessage = '';
+      this.warningMessage = '';
+      this.errorMessage = '';
+      
+      if (error.response) {
+        if (error.response.data?.error) {
           this.errorMessage = error.response.data.error;
-        } else if (error.response && error.response.data && error.response.data.detail) {
+        } else if (error.response.data?.detail) {
           this.errorMessage = error.response.data.detail;
         } else if (error instanceof Error) {
           this.errorMessage = error.message;
         } else {
           this.errorMessage = 'Failed to create user. Please try again.';
         }
-
-        this.successMessage = '';
-
-        if (error.response && error.response.status === 403) {
-          setTimeout(() => {
-            this.$router.push('/users');
-          }, 3000);
-        }
-
-        setTimeout(() => {
-          this.errorMessage = '';
-        }, 3000);
+      } else if (error.message) {
+        this.errorMessage = error.message;
+      } else {
+        this.errorMessage = 'An unexpected error occurred.';
       }
+
+      this.successMessage = '';
+
+      if (error.response?.status === 403) {
+        setTimeout(() => {
+          this.$router.push('/users');
+        }, 4000);
+      }
+
+      setTimeout(() => {
+        this.errorMessage = '';
+      }, 4000);
     },
+
     goToUsers() {
       this.$router.push('/users');
     },

@@ -75,7 +75,6 @@ export default Vue.extend({
       )
       this.errorMessage = ''
     } catch (error: any) {
-        console.error('Error fetching perspectives:', error)
         if (error.response?.data?.error) {
           this.errorMessage = error.response.data.error
         } else if (error.response?.data?.detail) {

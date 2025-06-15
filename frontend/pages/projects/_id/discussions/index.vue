@@ -416,6 +416,10 @@ export default Vue.extend({
     },
 
     async saveEdit(comment: DiscussionCommentItem) {
+      if (this.editText.trim() === comment.text) {
+        this.editingCommentId = null;
+        return;
+      }
       try {
         const updated = await this.$services.discussion.updateComment(
           this.$route.params.id,

@@ -129,23 +129,36 @@ class CustomUserCreateView(APIView):
 
             UserData.objects.create(user=user, sex=sex, age=age, created_by=request.user)
 
-            send_mail(
-                subject='Doccano account',
-                message=f'Your Doccano account has been created successfully.\nYour username: {username}\nYour password: {password}',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
+            email_sent = False
+            try:
+                send_mail(
+                    subject='Doccano account',
+                    message=f'Your Doccano account has been created successfully.\nYour username: {username}\nYour password: {password}',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                email_sent = True
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send email to {email}: {str(e)}")
 
-            return Response(
-                {'message': 'User created successfully.'},
-                status=status.HTTP_201_CREATED,
-            )
-        except IntegrityError as e:
-            return Response(
-                {'error': 'Database error. Please try again.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if email_sent:
+                return Response(
+                    {'message': 'User created successfully. Email sent.'},
+                    status=status.HTTP_201_CREATED,
+                )
+            else:
+                return Response(
+                    {
+                        'message': 'User created successfully but email could not be sent.',
+                        'warning': 'The user account was created, but the notification email failed to send.',
+                        'username': username,
+                        'password': password
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
         except Exception as e:
             return Response(
                 {'error': str(e)},

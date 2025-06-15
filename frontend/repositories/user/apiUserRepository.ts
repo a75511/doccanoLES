@@ -81,9 +81,13 @@ export class APIUserRepository {
     last_name: string;
     is_staff?: boolean;
     is_superuser?: boolean;
-  }): Promise<UserItem> {
+  }): Promise<{ user: UserItem; message?: string; password?: string }> {
     const url = '/users/create';
     const response = await this.request.post(url, userData);
-    return toModel(response.data);
+    return {
+      user: toModel(response.data),
+      message: response.data.message,
+      password: response.data.password
+    };
   }
 }

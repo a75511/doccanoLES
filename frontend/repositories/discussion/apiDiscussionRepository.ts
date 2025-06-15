@@ -224,86 +224,94 @@ export class APIDiscussionRepository {
   }
 
   async addComment(projectId: string, text: string): Promise<DiscussionCommentItem> {
-    if (!this.currentMember) {
-      throw new Error('User not authenticated')
-    }
-
-    const tempComment = {
-      id: -Date.now(), // Add negative temporary ID
-      temp_id: Date.now(),
-      text,
-      member: this.currentMember.id,
-      username: this.currentMember.username,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    if (navigator.onLine) {
-      try {
-        const response = await this.request.post(`/projects/${projectId}/discussion/comments`, { text })
-        const comment = toCommentModel(response.data)
-        this.sendSocketMessage('create', { 
-          ...comment,
-          temp_id: tempComment.temp_id
-        })
-        return comment
-      } catch (error: any) {
-        if (error.response?.status === 500) {
-          throw error; // Prevent caching on DB errors
-        }
-        await DiscussionCache.cacheComment(projectId, tempComment)
-        throw error
-      }
-    } else {
-      await DiscussionCache.cacheComment(projectId, tempComment)
-      return { ...tempComment, id: -Math.abs(tempComment.id) } as DiscussionCommentItem
-    }
+  if (!this.currentMember) {
+    throw new Error('User not authenticated');
   }
+
+  const tempComment = {
+    id: -Date.now(),
+    temp_id: Date.now(),
+    text,
+    member: this.currentMember.id,
+    username: this.currentMember.username,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  this.sendSocketMessage('create', tempComment);
+  
+  if (navigator.onLine) {
+    try {
+      const response = await this.request.post(`/projects/${projectId}/discussion/comments`, { text });
+      return toCommentModel(response.data);
+    } catch (error: any) {
+      if (error.response?.status === 500) {
+        await DiscussionCache.cacheComment(projectId, tempComment);
+      }
+      return tempComment as DiscussionCommentItem;
+    }
+  } else {
+    await DiscussionCache.cacheComment(projectId, tempComment);
+    return tempComment as DiscussionCommentItem;
+  }
+}
 
   async updateComment(projectId: string, commentId: number, text: string):
    Promise<DiscussionCommentItem> {
-    if (navigator.onLine) {
-      try {
-        const response = await this.request.put(`/projects/${projectId}/discussion/comments/${commentId}`, { text })
-        return toCommentModel(response.data)
-      } catch (error: any) {
-        if (error.response?.status === 500) {
-          throw error;
-        }
-        await DiscussionCache.cacheUpdate(projectId, { id: commentId, text })
-        throw error
+  const tempUpdate = {
+    id: commentId,
+    text,
+    member: this.currentMember?.id || 0,
+    username: this.currentMember?.username || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  this.sendSocketMessage('update', tempUpdate);
+
+  if (navigator.onLine) {
+    try {
+      const response = await this.request.put(`/projects/${projectId}/discussion/comments/${commentId}`, { text });
+      return toCommentModel(response.data);
+    } catch (error: any) {
+      if (error.response?.status === 500) {
+        await DiscussionCache.cacheUpdate(projectId, { id: commentId, text });
       }
-    } else {
-      const update = { id: commentId, text }
-      await DiscussionCache.cacheUpdate(projectId, update)
-      return { 
-        id: commentId,
-        text,
-        member: this.currentMember?.id || 0,
-        username: this.currentMember?.username || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      } as DiscussionCommentItem
+      return tempUpdate as DiscussionCommentItem;
     }
+  } else {
+    await DiscussionCache.cacheUpdate(projectId, { id: commentId, text });
+    return tempUpdate as DiscussionCommentItem;
   }
+}
   
   async deleteComment(projectId: string, commentId: number): Promise<void> {
-    if (navigator.onLine) {
-      try {
-        await this.request.delete(`/projects/${projectId}/discussion/comments/${commentId}`)
-      } catch (error: any) {
-        if (error.response?.status === 500) {
-          throw error;
-        }
-        await DiscussionCache.cacheDeletion(projectId, commentId)
-        throw error
+  this.sendSocketMessage('delete', {
+    id: commentId,
+    text: '',
+    member: this.currentMember?.id || 0,
+    username: this.currentMember?.username || '',
+    createdAt: '',
+    updatedAt: ''
+  });
+
+  if (navigator.onLine) {
+    try {
+      await this.request.delete(`/projects/${projectId}/discussion/comments/${commentId}`);
+    } catch (error: any) {
+      if (error.response?.status === 500) {
+        await DiscussionCache.cacheDeletion(projectId, commentId);
       }
-    } else {
-      await DiscussionCache.cacheDeletion(projectId, commentId)
     }
+  } else {
+    await DiscussionCache.cacheDeletion(projectId, commentId);
   }
+}
 
   clearCommentCache(projectId: string) {
     DiscussionCache.clearProjectCache(projectId);
   }
+
+  async syncCacheToDatabase(projectId: string): Promise<void> {
+  await DiscussionCache.processCache(projectId, this);
+}
 }

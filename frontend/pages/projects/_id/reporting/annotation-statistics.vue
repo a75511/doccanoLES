@@ -32,13 +32,11 @@
           <v-col cols="12" md="3" class="pl-md-2">
             <export-filter v-model="selectedFormats" />
           </v-col>
-          <v-col cols="12" md="2" class="pl-md-2">
-            <v-btn color="primary" @click="applyFilters" :loading="loading">
+          <v-col cols="12" md="4" class="pl-md-1 d-flex align-center">
+            <v-btn color="primary" @click="applyFilters" :loading="loading" class="mr-2">
               <v-icon left>{{icons.refresh}}</v-icon>
               Apply
             </v-btn>
-          </v-col>
-          <v-col cols="12" md="2" class="pl-md-2">
             <v-btn color="secondary" @click="resetFilters">
               <v-icon left>{{icons.close}}</v-icon>
               Reset
@@ -113,13 +111,12 @@
             </template>
           </div>
 
-          <!-- Move alerts to be direct siblings of the v-if template -->
           <v-alert
             v-if="!loading && showResults && (!stats || !stats.label_distributions.length)"
             type="info"
             class="ma-4"
           >
-            No data available for the selected filters
+            No data available for the current filters
           </v-alert>
 
           <v-alert
@@ -127,7 +124,7 @@
             type="info"
             class="ma-4"
           >
-            Click "Apply" to load and display statistics
+            Please select at least one Attribute and Click "Apply" to load and display statistics
           </v-alert>
         </div>
       </v-card-text>
@@ -164,11 +161,11 @@ export default {
         { text: 'Only Agreements', value: 'agreement' },
         { text: 'Only Disagreements', value: 'disagreement' }
       ],
-      selectedFormats: [],
+      selectedFormats: ['preview'],
       loading: false,
       error: null,
-      showResults: false, // New flag to control when to show results
-      generateHiddenCharts: false, // Flag for hidden charts generation
+      showResults: false,
+      generateHiddenCharts: false,
       icons: {
         refresh: mdiRefresh,
         close: mdiClose,
@@ -238,7 +235,16 @@ export default {
         await this.loadData();
         
         // Set showResults to true so charts can render
-        this.showResults = true;
+        const hasData = this.stats && 
+                       this.stats.label_distributions && 
+                       this.stats.label_distributions.length > 0;
+        
+        this.showResults = hasData;
+
+        if (!hasData) {
+          this.error = 'No data available for the selected filters';
+          return;
+        }
         
         // Wait for DOM to update and charts to render
         await this.$nextTick();
@@ -253,9 +259,7 @@ export default {
         
         // Handle exports after charts are ready
         if (this.selectedFormats.includes('csv')) {
-          await this.exportCSV().catch(e => {
-            throw new Error(`CSV export failed: ${e.message}`);
-          });
+          await this.exportCSV();
         }
         
         if (this.selectedFormats.includes('pdf')) {
@@ -301,40 +305,51 @@ export default {
     exportCSV() {
       if (!this.stats) return;
       
-      // Create CSV header with filter information
-      const csvData = [
-        { 'Report Type': 'Annotation Disagreement Report' },
-        {},
-        { 'Filters Applied': 'Values' },
-        { 'Attributes': this.selectedAttributes.join(', ') || 'None' },
-        { 'Descriptions': this.selectedDescriptions.join(', ') || 'None' },
-        { 'View Type': this.viewType || 'all' },
-        {},
-        { 'Overall Statistics': '' },
-        { 'Total Examples': this.stats.total_examples },
-        { 'Conflict Count': this.stats.conflict_count },
-        { 'Total Members': this.stats.total_members },
-        {},
-        {
-          'Group Attributes': 'Group Attributes',
-          'Group Descriptions': 'Group Descriptions',
-          'Example ID': 'Example ID',
-          'Example Text': 'Example Text',
-          'Label': 'Label',
-          'Count': 'Count',
-          'Percentage': 'Percentage',
-          'Total Annotators': 'Total Annotators',
-          'Non-Annotated': 'Non-Annotated',
-          'Agreement Rate': 'Agreement Rate',
-          'Is Agreement': 'Is Agreement'
-        }
-      ];
+      const rows = [];
+      
+      // 1. Report header
+      rows.push({ '': 'Annotation Statistics' });
+      rows.push({});
+      
+      // 2. Filters section
+      rows.push({ '': 'Values' });
+      rows.push({ '': 'Attributes', ' ': this.selectedAttributes.join(', ') || 'None' });
+      rows.push({ '': 'Descriptions', ' ': this.selectedDescriptions.join(', ') || 'None' });
+      rows.push({ '': 'View Type', ' ': this.viewType || 'all' });
+      rows.push({});
+      
+      // 3. Overall statistics
+      rows.push({ '': 'Overall Statistics' });
+      rows.push({ '': 'Total Examples', ' ': this.stats.total_examples });
+      rows.push({ '': 'Conflict Count', ' ': this.stats.conflict_count });
+      for (const dist of this.labelDistributions)
+        // Add group header with total annotators
+        rows.push({ 
+          ' ': `Total Annotators: ${dist.examples.reduce((sum, ex) => sum + ex.total, 0)} / ${dist.total_members}` 
+        });
+      rows.push({});
 
-      // Add detailed data
+      
+      // 4. Table header
+      rows.push({
+        'Group Attributes': 'Group Attributes',
+        'Group Descriptions': 'Group Descriptions',
+        'Example ID': 'Example ID',
+        'Example Text': 'Example Text',
+        'Label': 'Label',
+        'Count': 'Count',
+        'Percentage': 'Percentage',
+        'Total Annotators': 'Total Annotators',
+        'Non-Annotated': 'Non-Annotated',
+        'Agreement Rate': 'Agreement Rate',
+        'Is Agreement': 'Is Agreement'
+      });
+      
+      // 5. Table data
       for (const dist of this.labelDistributions) {
         for (const example of dist.examples) {
-          // Add example info row
-          csvData.push({
+          // Main example row
+          rows.push({
             'Group Attributes': dist.attributes.join(', '),
             'Group Descriptions': dist.descriptions.join(', '),
             'Example ID': example.example_id,
@@ -344,21 +359,20 @@ export default {
             'Percentage': '',
             'Total Annotators': example.total,
             'Non-Annotated': example.non_annotated,
-            'Agreement Rate': example.agreement_rate.toFixed(1) + '%',
+            'Agreement Rate': this.formatPercentage(example.agreement_rate, 1),
             'Is Agreement': example.is_agreement ? 'Yes' : 'No'
           });
 
-          // Add individual label rows
+          // Label rows
           for (const label of example.labels) {
-            const percentage = ((label.count / dist.total_members) * 100).toFixed(1);
-            csvData.push({
+            rows.push({
               'Group Attributes': '',
               'Group Descriptions': '',
               'Example ID': '',
               'Example Text': '',
               'Label': label.label,
               'Count': label.count,
-              'Percentage': percentage + '%',
+              'Percentage': this.formatPercentage((label.count / dist.total_members) * 100, 1),
               'Total Annotators': '',
               'Non-Annotated': '',
               'Agreement Rate': '',
@@ -368,10 +382,20 @@ export default {
         }
       }
 
-      this.$export.exportCSV(csvData, `disagreement-statistics-${this.$route.params.id}.csv`);
+      this.$export.exportCSV(rows, `disagreement-statistics-${this.$route.params.id}.csv`);
+    },
+
+    formatPercentage(value, decimals = 1) {
+      if (typeof value !== 'number') return value;
+      return value.toFixed(decimals).replace('.', ',') + '%';
     },
 
     async exportPDF() {
+      if (!this.stats || 
+          !this.labelDistributions || 
+          this.labelDistributions.length === 0) {
+        return;
+      }
       try {
         const { jsPDF: JsPDF } = await import('jspdf');
         const pdfDoc = new JsPDF('landscape');

@@ -66,6 +66,7 @@ export class DiscussionApplicationService {
 
   async closeSession(projectId: string, sessionId: number): Promise<any> {
     try {
+      await this.syncCache(projectId);
       const response = await this.repository.closeSession(projectId, sessionId)
       
       // Handle pending closure response
@@ -177,7 +178,7 @@ export class DiscussionApplicationService {
 
   async syncCache(projectId: string): Promise<void> {
     try {
-      await DiscussionCache.processCache(projectId, this.repository)
+      await this.repository.syncCacheToDatabase(projectId);
     } catch (error) {
       throw new Error('Failed to sync offline changes')
     }

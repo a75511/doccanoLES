@@ -16,4 +16,4 @@ export default _.debounce(async ({ app, route, redirect, error }: NuxtAppOptions
       redirect('/projects')
     }
   }
-}, 2000)
+}, 4000)

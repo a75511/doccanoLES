@@ -50,11 +50,11 @@ export class UserApplicationService {
     last_name: string;
     is_staff?: boolean;
     is_superuser?: boolean;
-  }): Promise<UserItem> {
+  }): Promise<{ user: UserItem; message?: string; password?: string }> {
     try {
       return await this.repository.createUser(userData);
     } catch (e: any) {
-      throw new Error(e.response?.data?.detail || 'Failed to create user');
+      throw new Error(e.response?.data?.error || 'Failed to create user');
     }
   }
 }
