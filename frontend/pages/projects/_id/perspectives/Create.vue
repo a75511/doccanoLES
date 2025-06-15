@@ -62,6 +62,7 @@
                     <v-col cols="10">
                       <v-text-field
                         v-model="option.value"
+                        :rules="[rules.required]"
                         :label="`Option ${optIndex + 1}`"
                         outlined
                         required
@@ -74,7 +75,7 @@
                       </v-btn>
                     </v-col>
                   </v-row>
-                  <v-btn text color="primary" @click="addOption(index)">
+<v-btn text color="primary" :disabled="attribute.options.length >= 10" @click="addOption(index)">
                     {{ $t('perspectives.add_option') }}
                   </v-btn>
                 </v-col>

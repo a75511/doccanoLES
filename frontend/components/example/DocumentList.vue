@@ -67,10 +67,11 @@
       </v-combobox>
     </template>
     <template #[`item.action`]="{ item }">
-      <v-btn class="me-1" small color="primary text-capitalize" @click="$emit('edit', item)"
+      <v-btn class="me-1" 
+      :disabled="project.locked" small color="primary text-capitalize" @click="$emit('edit', item) "
         >Edit</v-btn
       >
-      <v-btn small color="primary text-capitalize" @click="toLabeling(item)">
+<v-btn small color="primary text-capitalize" :disabled="project.locked" @click="toLabeling(item)">
         {{ $t('dataset.annotate') }}
       </v-btn>
     </template>
@@ -80,6 +81,7 @@
 <script lang="ts">
 import { mdiMagnify } from '@mdi/js'
 import type { PropType } from 'vue'
+import { mapGetters } from 'vuex'
 import Vue from 'vue'
 import { DataOptions } from 'vuetify/types'
 import { ExampleDTO } from '~/services/application/example/exampleData'
@@ -127,6 +129,8 @@ export default Vue.extend({
   },
 
   computed: {
+    ...mapGetters('projects', ['project']),
+
     headers() {
       const headers = [
         {

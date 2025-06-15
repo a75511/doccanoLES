@@ -363,6 +363,7 @@ v-if="votingStatus && votingStatus.status === 'completed' && votingStatus.agreem
           this.handleError(error, 'Database Unavailable. Please try again later.')
         } finally {
           this.isCreatingFollowUp = false
+          this.$router.push(`/projects/${this.projectId}/discussions/sessions`)
         }
       },
 

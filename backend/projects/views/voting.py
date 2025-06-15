@@ -34,7 +34,7 @@ class StartVotingView(generics.UpdateAPIView):  # Changed from CreateUpdateAPIVi
 
     def patch(self, request, *args, **kwargs):
         voting = self.get_object()
-        discussion = get_object_or_404(Discussion, project=voting.project, is_active=True)
+        discussion = Discussion.objects.filter(project=voting.project).order_by('-created_at').first()
         
         # Update voting session
         voting.current_discussion = discussion
@@ -105,18 +105,12 @@ class CreateFollowUpVotingView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create new discussion
-        new_discussion = Discussion.objects.create(
-            project=project,
-            title="Follow-up Discussion",
-            description="Continued discussion for unresolved guidelines",
-            is_active=True
-        )
-        
+        discussion = Discussion.objects.filter(project=previous_voting.project).order_by('-created_at').first()
+
         # Create new voting session
         voting = GuidelineVoting.objects.create(
             project=project,
-            current_discussion=new_discussion,
+            current_discussion=discussion,
             previous_voting=previous_voting,
             status='not_started',
             guidelines_snapshot=project.guideline
