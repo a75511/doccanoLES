@@ -265,10 +265,9 @@ export default Vue.extend({
           if(this.isAdmin)
           {
             setTimeout(() => {
-              this.$router.push(`/projects/${this.$route.params.id}/discussions/sessions`)
+              this.$router.push(`/projects/${this.$route.params.id}/voting`)
             }, 2000)
-          }
-          else {
+          } else {
             setTimeout(() => {
             this.$router.push(`/projects/${this.$route.params.id}`)
           }, 2000)

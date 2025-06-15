@@ -551,7 +551,7 @@ export default {
         // Add filtered statistics
         pdf.setFontSize(14)
         pdf.setTextColor(0, 0, 139)
-        pdf.text('Filtered Statistics', 20, yPos)
+        pdf.text('Filtered Global Results', 20, yPos)
         yPos += 10
         
         pdf.setFontSize(12)

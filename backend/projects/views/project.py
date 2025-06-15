@@ -90,7 +90,7 @@ class ProjectLockView(views.APIView):
                 project=project,
                 title="Guidelines Discussion",
                 description="Initial discussion for locked project guidelines",
-                is_active=True
+                is_active=False
             )
             
             # Create voting session

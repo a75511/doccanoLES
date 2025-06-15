@@ -1,6 +1,8 @@
 <template>
   <v-list dense>
-    <v-btn color="ms-4 my-1 mb-2 primary text-capitalize" nuxt @click="toLabeling">
+    <v-btn color="primary"
+    class="ms-4 my-1 mb-2 text-capitalize" 
+    :disabled="project.locked" nuxt @click="toLabeling">
       <v-icon left>
         {{ mdiPlayCircleOutline }}
       </v-icon>
@@ -28,7 +30,7 @@
 </template>
 
 <script>
-
+import { mapGetters } from 'vuex'
 import {
   mdiAccount,
   mdiBookOpenOutline,
@@ -71,6 +73,7 @@ export default {
   },
 
   computed: {
+    ...mapGetters('projects', ['project']),
     isProjectAdmin() {
       return this.currentRole === 'project_admin'
     },
@@ -96,7 +99,7 @@ export default {
       return this.hasJoinedSession ? 'discussions' : 'discussions/sessions'
     },
     showDiscussionsTab() {
-      return this.isProjectAdmin || this.hasActiveSession
+      return this.project.locked && (this.isProjectAdmin || this.hasActiveSession)
     },
 
     filteredItems() {
@@ -166,10 +169,16 @@ export default {
           isVisible: this.isProjectAdmin || this.isApprover
         },
         {
+          icon: mdiFileChart,
+          text: 'Reporting',
+          link: 'reporting',
+          isVisible: this.isProjectAdmin || this.isApprover
+        },
+        {
           icon: mdiSetLeft,
           text: "Disagreements",
           link: 'disagreements',
-          isVisible: (this.isProjectAdmin || this.isApprover) && this.project.projectType !== 'text'
+          isVisible: (this.isProjectAdmin || this.isApprover) && this.project.projectType !== 'text' && this.project.locked
         },
         {
           icon: mdiForum,
@@ -178,16 +187,10 @@ export default {
           isVisible: this.showDiscussionsTab
         },
         {
-          icon: mdiFileChart,
-          text: 'Reporting',
-          link: 'reporting',
-          isVisible: this.isProjectAdmin || this.isApprover
-        },
-        {
           icon: mdiVote,
           text: 'Voting',
           link: 'voting',
-          isVisible: true,
+          isVisible: this.project.locked
         }
       ]
       return items.filter((item) => item.isVisible)
