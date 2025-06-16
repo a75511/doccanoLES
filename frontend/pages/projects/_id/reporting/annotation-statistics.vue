@@ -69,7 +69,8 @@
                     <v-card-text>
                       <div>Total Annotators: {{ example.total }} / {{ dist.total_members }}</div>
                       <div :class="agreementClass(example)">
-                        Agreement: {{ example.agreement_rate.toFixed(1) }}%
+                        {{ example.is_agreement ? 'Agreement' : 'Disagreement' }}:
+                         {{ example.agreement_rate.toFixed(1) }}%
                         <v-icon small>{{ agreementIcon(example) }}</v-icon>
                       </div>
                     </v-card-text>
@@ -133,7 +134,7 @@
 </template>
 
 <script>
-import { mdiRefresh, mdiClose } from '@mdi/js'
+import { mdiRefresh, mdiClose, mdiCheck, mdiAlert } from '@mdi/js'
 import ExportFilter from '@/components/reporting/ExportFilter.vue'
 import PerspectiveFilter from '@/components/reporting/PerspectiveFilter.vue'
 import DescriptionFilter from '@/components/reporting/DescriptionFilter.vue'
@@ -169,6 +170,8 @@ export default {
       icons: {
         refresh: mdiRefresh,
         close: mdiClose,
+        check: mdiCheck,
+        alert: mdiAlert
       }
     }
   },
@@ -281,7 +284,7 @@ export default {
     resetFilters() {
       this.selectedAttributes = []
       this.selectedDescriptions = []
-      this.selectedFormats = []
+      this.selectedFormats = ['preview']
       this.stats = null;
       this.showResults = false;
       this.generateHiddenCharts = false;
@@ -292,7 +295,7 @@ export default {
     },
 
     agreementIcon(example) {
-      return example.is_agreement ? 'mdi-check' : 'mdi-alert';
+      return example.is_agreement ? this.icons.check : this.icons.alert;
     },
 
     showError(message) {
@@ -322,11 +325,16 @@ export default {
       rows.push({ '': 'Overall Statistics' });
       rows.push({ '': 'Total Examples', ' ': this.stats.total_examples });
       rows.push({ '': 'Conflict Count', ' ': this.stats.conflict_count });
-      for (const dist of this.labelDistributions)
-        // Add group header with total annotators
-        rows.push({ 
-          ' ': `Total Annotators: ${dist.examples.reduce((sum, ex) => sum + ex.total, 0)} / ${dist.total_members}` 
+      // Get the maximum total annotators across examples
+      let count = 0;
+      for (const dist of this.labelDistributions) {
+        count++;
+        // Add group header with annotator info for each example group
+        rows.push({
+          ' ': `Total Annotators: ${dist.total_members}`
         });
+        if(count===1) break;
+      }
       rows.push({});
 
       
@@ -404,7 +412,7 @@ export default {
 
         // Add report title
         pdfDoc.setFontSize(18);
-        pdfDoc.text('Annotation Disagreement Report', pageWidth / 2, yPosition, { align: 'center' });
+        pdfDoc.text('Annotation Statistics', pageWidth / 2, yPosition, { align: 'center' });
         yPosition += 15;
 
         // Add filter information
@@ -425,7 +433,7 @@ export default {
         yPosition += 8;
         pdfDoc.text(`• Conflict Count: ${this.stats.conflict_count}`, 25, yPosition);
         yPosition += 8;
-        pdfDoc.text(`• Total Members: ${this.stats.total_members}`, 25, yPosition);
+        pdfDoc.text(`• Total Annotators: ${this.stats.total_members}`, 25, yPosition);
         yPosition += 15;
 
         // Use hidden charts container for PDF generation
