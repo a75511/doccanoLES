@@ -20,7 +20,7 @@ class PerspectiveListView(generics.ListCreateAPIView):
         if self.request.method == "GET":
             self.permission_classes = [IsAuthenticated]
         else:
-            self.permission_classes = [IsAuthenticated & IsAdminUser]
+            self.permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -52,7 +52,7 @@ class PerspectiveAttributeListView(generics.ListAPIView):
 
 class CreatePerspectiveView(generics.CreateAPIView):
     serializer_class = PerspectiveSerializer
-    permission_classes = [IsAuthenticated & IsAdminUser]
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
 
     def create(self, request, *args, **kwargs):
         try:
@@ -103,7 +103,7 @@ class CreatePerspectiveView(generics.CreateAPIView):
 
 class PerspectiveAttributeListOptionView(generics.ListCreateAPIView):
     serializer_class = PerspectiveAttributeListOptionSerializer
-    permission_classes = [IsAuthenticated & IsAdminUser]
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
 
     def get_queryset(self):
         attribute_id = self.kwargs["attribute_id"]
@@ -114,7 +114,7 @@ class PerspectiveAttributeListOptionView(generics.ListCreateAPIView):
         serializer.save(attribute=attribute)    
 
 class AssignPerspectiveToProject(APIView):
-    permission_classes = [IsAuthenticated & IsAdminUser]
+    permission_classes = [IsAuthenticated & (IsProjectAdmin | IsAnnotationApprover)]
 
     def post(self, request, project_id, perspective_id):
         project = get_object_or_404(Project, id=project_id)
