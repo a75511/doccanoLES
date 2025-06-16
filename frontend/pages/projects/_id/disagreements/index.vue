@@ -13,7 +13,6 @@
             label="Filter by Label"
             clearable
             style="max-width: 200px; margin-right: 20px"
-            @change="analyze"
           ></v-select>
           
           <!-- Order By -->
@@ -22,7 +21,6 @@
             :items="orderOptions"
             label="Order By"
             style="max-width: 150px; margin-right: 20px"
-            @change="analyze"
           ></v-select>
           
           <v-btn

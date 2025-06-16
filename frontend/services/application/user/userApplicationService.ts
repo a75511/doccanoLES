@@ -26,7 +26,7 @@ export class UserApplicationService {
     try {
       return await this.repository.list(query)
     } catch (e: any) {
-      throw new Error(e.response?.data?.detail || 'Failed to fetch users')
+      throw new Error(e.response?.data?.detail || 'Database Unavailable. Please try again later.')
     }
   }
 

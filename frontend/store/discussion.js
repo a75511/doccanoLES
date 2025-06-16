@@ -1,11 +1,13 @@
 export const state = () => ({
   activeSession: null,
   pendingClosure: false,
-  hasJoined: false
+  hasJoined: false,
+  votingStatus: false,
 })
 
 export const getters = {
-  hasActiveSession: (state) => !!state.activeSession
+  hasActiveSession: (state) => !!state.activeSession,
+  isVoting: (state) => state.votingStatus,
 }
 
 export const mutations = {
@@ -22,6 +24,9 @@ export const mutations = {
     state.activeSession = null
     state.hasJoined = false
     state.pendingClosure = false
+  },
+  SET_VOTING_STATUS(state, status) {
+    state.votingStatus = status
   }
 }
 

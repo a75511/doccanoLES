@@ -24,7 +24,7 @@ export class VotingApplicationService {
     try {
       return await this.repository.submitVote(projectId, agrees);
     } catch (e: any) {
-      throw new Error(e.response?.data?.detail || 'Failed to submit vote.');
+      throw new Error(e.response?.data?.detail || 'Database Unavailable. Please try again later.');
     }
   }
 

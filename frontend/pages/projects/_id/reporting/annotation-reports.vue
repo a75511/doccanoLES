@@ -283,7 +283,8 @@ export default {
         return 'Please select at least one perspective attribute to view the disagreement report.'
       }
       
-      if (this.showResults && (!this.stats || !this.stats.label_distributions.length)) {
+      if (this.showResults && 
+      (!this.stats || !this.stats.label_distributions.length) && !this.error) {
         return 'No data available for the selected filters. Try adjusting your filter criteria.'
       }
       
@@ -359,7 +360,12 @@ export default {
         )
         this.stats = response
       } catch (e) {
-        this.error = e.response?.data?.error || e.message || 'Failed to load data'
+        if (e.response && e.response.status===500) {
+          this.error = 'Database Unavailable. Please try again later.'
+        } else {
+          this.error = e.response?.data?.error || e.message || 'Failed to load data'
+          
+        }
         this.stats = null
       } finally {
         this.loading = false

@@ -10,13 +10,24 @@
         Create
       </v-btn>
     </v-card-title>
-    <user-list
-      v-model="selected"
-      :items="users.items"
-      :is-loading="isLoading"
-      :total="users.count"
-      @update:query="updateQuery"
-    />
+
+    <v-card-text>
+      <v-alert
+        v-if="error"
+        type="error"
+        class="mb-4"
+      >
+        {{ error }}
+      </v-alert>
+
+      <user-list
+        v-model="selected"
+        :items="users.items"
+        :is-loading="isLoading"
+        :total="users.count"
+        @update:query="updateQuery"
+      />
+    </v-card-text>
   </v-card>
 </template>
 
@@ -29,7 +40,6 @@ import { Page } from '~/domain/models/page'
 import { UserItem } from '~/domain/models/user/user'
 import { SearchQueryData } from '~/services/application/project/projectApplicationService'
 
-
 export default Vue.extend({
   components: {
     UserList
@@ -41,14 +51,22 @@ export default Vue.extend({
     return {
       users: {} as Page<UserItem>,
       selected: [] as UserItem[],
-      isLoading: false
+      isLoading: false,
+      error: '' as string
     }
   },
 
   async fetch() {
     this.isLoading = true
-    this.users = await this.$services.user.list(this.$route.query as unknown as SearchQueryData)
-    this.isLoading = false
+    this.error = ''
+    try {
+      this.users = await this.$services.user.list(this.$route.query as unknown as SearchQueryData)
+    } catch (error) {
+      this.error = error.message || 'Database Unavailable. Please try again later.'
+      console.error('Failed to load users:', error)
+    } finally {
+      this.isLoading = false
+    }
   },
 
   computed: {
@@ -63,7 +81,6 @@ export default Vue.extend({
   },
 
   methods: {
-
     updateQuery(query: object) {
       this.$router.push(query)
     }

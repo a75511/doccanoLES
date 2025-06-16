@@ -1,5 +1,12 @@
 <template>
   <v-container class="py-8">
+    <v-alert
+        v-if="error"
+        type="error"
+        class="mb-4"
+      >
+        {{ error }}
+  </v-alert>
     <v-card v-if="user" class="elevation-12 rounded-lg">
       <v-card-title class="d-flex align-center">
         <v-avatar color="primary" size="56" class="mr-4">
@@ -35,6 +42,18 @@
               class="text-subtitle-2 text--primary">Username</v-list-item-title>
               <v-list-item-subtitle 
               class="text-body-1 font-weight-medium">{{ user.username }}</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+
+          <v-list-item v-if="user.firstName" class="px-0">
+            <v-list-item-icon class="mr-4">
+              <v-icon color="primary">{{ mdiAccountCircle }}</v-icon>
+            </v-list-item-icon>
+            <v-list-item-content>
+              <v-list-item-title class="text-subtitle-2 text--primary">Full Name</v-list-item-title>
+              <v-list-item-subtitle 
+class="text-body-1 font-weight-medium">
+{{ user.firstName }} {{ user.lastName }}</v-list-item-subtitle>
             </v-list-item-content>
           </v-list-item>
 
@@ -123,6 +142,7 @@ export default Vue.extend({
       mdiNumeric,
       mdiGenderMaleFemale,
       mdiArrowLeft,
+      error: '' as string,
     };
   },
 
@@ -142,6 +162,7 @@ export default Vue.extend({
         const userId = this.$route.params.id;
         this.user = await userRepository.findById(userId);
       } catch (error) {
+        this.error = 'Database Unavailable. Please try again later.'
         console.error('Error fetching user details:', error);
       } finally {
         this.isLoading = false;

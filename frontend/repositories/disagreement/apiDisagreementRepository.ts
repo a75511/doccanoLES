@@ -97,7 +97,7 @@ export class APIAnalysisRepository {
 
   private parseError(error: any): string {
     if (error.response) {
-      return error.response.data.detail || 'Failed to fetch disagreements'
+      return error.response.data.detail || 'Data Unavailable. Please try again later.';
     }
     return 'Network error occurred'
   }
