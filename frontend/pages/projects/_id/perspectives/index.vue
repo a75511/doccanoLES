@@ -124,10 +124,19 @@ export default Vue.extend({
         });
 
         return !hasCompletedMember;
-      } catch (error) {
-        return false; // Assume the worst-case scenario and block the association
-      }
-    },
+      } catch (error: any) {
+          if (error.response?.data?.error) {
+              this.errorMessage = error.response.data.error
+            } else if (error.response?.data?.detail) {
+              this.errorMessage = error.response.data.detail
+            } else if (error instanceof Error) {
+              this.errorMessage = error.message;
+            } else {
+              this.errorMessage = 'Failed to check member progress. Please try again.';
+          }
+          return true;
+        }
+      },
 
     async associatePerspective() {
       if (this.selected.length === 1) {
@@ -139,7 +148,7 @@ export default Vue.extend({
 
           setTimeout(() => {
             this.errorMessage = '';
-          }, 3000);
+          }, 4000);
 
           return;
         }
@@ -152,18 +161,17 @@ export default Vue.extend({
             await this.$repositories.example.resetConfirmation(this.projectId);
             this.$store.commit('projects/updateCurrentProjectPerspective', response.data.project.perspective);
 
-            this.successMessage = 'Perspective associated successfully. All annotations have been deleted.';
+            this.successMessage = 'Perspective associated successfully. All annotation confirmations were reset for all members.';
             this.errorMessage = '';
 
             setTimeout(() => {
                 this.successMessage = '';
-            }, 3000);
+            }, 4000);
         } catch (error: any) {
-            console.error('Failed to associate perspective:', error);
-            if (error.response && error.response.data && error.response.data.detail) {
-                this.errorMessage = error.response.data.detail;
-            } else if (error.response && error.response.data && error.response.data.error) {
-                this.errorMessage = error.response.data.error;
+            if (error.response?.data?.error) {
+              this.errorMessage = error.response.data.error
+            } else if (error.response?.data?.detail) {
+              this.errorMessage = error.response.data.detail
             } else if (error instanceof Error) {
                 this.errorMessage = error.message;
             } else {
@@ -173,7 +181,7 @@ export default Vue.extend({
 
             setTimeout(() => {
                 this.errorMessage = '';
-            }, 3000);
+            }, 4000);
           }
       }
     },
