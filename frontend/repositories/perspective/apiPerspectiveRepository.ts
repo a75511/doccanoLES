@@ -93,7 +93,7 @@ async listAttributes(projectId: string, perspectiveId: number, query: SearchQuer
         attr.perspective_id,
         attr.name,
         attr.type,
-        attr.options.map((option: any) => 
+        attr.options?.map((option: any) => 
           new PerspectiveAttributeListOptionItem(option.id, attr.id, option.value)
         ) || [],
       )

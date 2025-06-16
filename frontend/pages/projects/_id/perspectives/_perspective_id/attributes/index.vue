@@ -99,7 +99,9 @@
           page: 1,
           itemsPerPage: 10,
           sortBy: ['name'],
-          sortDesc: [false]
+          sortDesc: [false],
+          multiSort: false,
+          mustSort: true
         },
         isLoading: true,
         attributes: [],
@@ -125,27 +127,52 @@
             attr.name.toLowerCase().includes(searchTerm));
         }
   
-        if (this.options.sortBy.length) {
+        if (this.options.sortBy && this.options.sortBy.length) {
           const sortKey = this.options.sortBy[0];
-          const sortOrder = this.options.sortDesc[0] ? -1 : 1;
+          const sortOrder =
+           (this.options.sortDesc && this.options.sortDesc.length
+            > 0 && this.options.sortDesc[0]) ? -1 : 1;
           
           attributes.sort((a, b) => {
-            if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
-            if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
-            return 0;
+            const valA = String(a[sortKey] || '').toLowerCase();
+            const valB = String(b[sortKey] || '').toLowerCase();
+            
+            return valA.localeCompare(valB) * sortOrder;
           });
         }
         
         return attributes;
       }
     },
-  
+
     watch: {
+      '$route.query': {
+        handler() {
+          this.options = {
+            ...this.options,
+            page: parseInt(this.$route.query.page as string) || 1,
+            itemsPerPage: parseInt(this.$route.query.limit as string) || 10,
+            sortBy: this.$route.query.sortBy ? [this.$route.query.sortBy as string] : ['name'],
+            sortDesc: this.$route.query.sortDesc ? [this.$route.query.sortDesc === 'true'] : [false]
+          };
+        },
+        immediate: true
+      },
+  
       options: {
         async handler() {
           this.isLoading = true;
           try {
             this.errorMessage = '';
+            
+            const sortBy = (this.options.sortBy && this.options.sortBy.length > 0) 
+              ? this.options.sortBy[0] 
+              : 'name';
+            
+            const sortDesc = (this.options.sortDesc && this.options.sortDesc.length > 0) 
+              ? this.options.sortDesc[0] 
+              : false;
+            
             const response = await this.$services.perspective.listAttributes(
               this.$route.params.id,
               parseInt(this.$route.params.perspective_id),
@@ -153,12 +180,38 @@
                 limit: this.options.itemsPerPage.toString(),
                 offset: ((this.options.page - 1) * this.options.itemsPerPage).toString(),
                 q: this.search,
-                sortBy: this.options.sortBy[0],
-                sortDesc: this.options.sortDesc[0].toString()
+                sortBy,
+                sortDesc: sortDesc.toString()
               }
             );
             this.attributes = response.items;
             this.total = response.count;
+
+            const query: Record<string, string> = {
+              page: this.options.page.toString(),
+              limit: this.options.itemsPerPage.toString(),
+              sortBy,
+              sortDesc: sortDesc.toString()
+            };
+
+            if (this.search) {
+              query.q = this.search;
+            }
+
+            const currentQuery = this.$route.query;
+            const queryChanged = Object.keys(query).some(key => 
+              currentQuery[key] !== query[key]
+            ) || Object.keys(currentQuery).some(key => 
+              !query[key] && currentQuery[key]
+            );
+
+            if (queryChanged) {
+              await this.$router.replace({ 
+                path: this.$route.path, 
+                query 
+              });
+            }
+
           } catch (error: any) {
             if (error.response?.data?.error) {
                 this.errorMessage = error.response.data.error
@@ -167,20 +220,29 @@
               } else if (error instanceof Error) {
                 this.errorMessage = error.message
               } else {
-                this.errorMessage = 'Failed to fetch atributes. Please try again.'
+                this.errorMessage = 'Failed to fetch attributes. Please try again.'
             }
           }
           this.isLoading = false;
         },
         deep: true
+      },
+
+      search: {
+        handler() {
+          if (this.options.page !== 1) {
+            this.options = {
+              ...this.options,
+              page: 1
+            };
+          }
+        }
       }
     }
   });
   </script>
   
   <style scoped>
-
-  
   .v-card-title {
     align-items: center;
     padding: 16px;
