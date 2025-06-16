@@ -1,6 +1,6 @@
 <template>
     <confirm-form
-      :title="isLocked ? $t('dataset.unlockTitle') : $t('dataser.lockTitle')"
+      :title="isLocked ? $t('dataset.unlockTitle') : $t('dataset.lockTitle')"
       :message="isLocked ? $t('dataset.unlockMessage') : $t('dataset.lockMessage')"
       @ok="$emit('confirm')"
       @cancel="$emit('cancel')"
