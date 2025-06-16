@@ -6,7 +6,7 @@
       <v-card-text>
         <!-- Show active session with close button -->
         <v-alert v-if="activeSession" type="info">
-          Active session since {{ formatDate(activeSession.startedAt) }}
+          Active session since {{ formatDate(activeSession.started_at) }}
           <v-btn @click="closeSession" color="error" small class="ml-2">
             Close Session
           </v-btn>
