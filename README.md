@@ -174,7 +174,7 @@ Here are some tips might be helpful. [How to Contribute to Doccano Project](http
 
 ```tex
 @misc{doccano,
-  title={{doccano}: Text Annotation Tool for Human},
+  title={{doccano}}: Text Annotation Tool for Human},
   url={https://github.com/doccano/doccano},
   note={Software available from https://github.com/doccano/doccano},
   author={
